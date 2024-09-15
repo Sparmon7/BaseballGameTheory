@@ -1,6 +1,7 @@
 raw_data/statcast
 processed_data
 myenv
+src/__pycache__
 src/policy/__pycache__
 src/policy/distributions.blosc2
 src/policy/solved_policy.blosc2
