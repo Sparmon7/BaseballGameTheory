@@ -1,3 +1,9 @@
+from dotenv import load_dotenv
+load_dotenv()
+import sys
+import os
+sys.path.append(os.getenv('FOLDER'))
+
 import copy
 import random
 import warnings
@@ -9,9 +15,8 @@ import numpy as np
 import torch
 from torch.distributions import MultivariateNormal
 from torch.utils.data import DataLoader
-import sys
-sys.path.append('C:/Users/sparm/baseballResearch/ZeroSumBaseball')
-from src.policy.rosters import rosters
+
+
 
 try:
     # noinspection PyUnresolvedReferences
@@ -19,7 +24,9 @@ try:
     from tqdm.notebook import tqdm
 except NameError:
     from tqdm import tqdm
-
+import sys
+sys.path.append('C:/Users/sparm/BaseballGameTheory')
+from src.policy.rosters import rosters
 from src.data.data_loading import BaseballData, load_blosc2, save_blosc2
 from src.data.datasets import SwingResult, PitchDataset, PitchControlDataset
 from src.distributions.batter_patience import BatterSwings, batter_patience_map
@@ -247,7 +254,7 @@ class PolicySolver:
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         swing_outcome_model = SwingOutcome().to(device)
-        swing_outcome_model.load_state_dict(torch.load('../../model_weights/swing_outcome.pth', map_location=device))
+        swing_outcome_model.load_state_dict(torch.load('../../model_weights/swing_outcome.pth', map_location=device, weights_only=True))
         swing_outcome_model.eval()
 
         swing_outcome = {}
@@ -302,7 +309,7 @@ class PolicySolver:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         pitcher_control_model = PitcherControl().to(device)
-        pitcher_control_model.load_state_dict(torch.load('../../model_weights/pitcher_control.pth', map_location=device))
+        pitcher_control_model.load_state_dict(torch.load('../../model_weights/pitcher_control.pth', map_location=device, weights_only=True))
         pitcher_control_model.eval()
 
         pitcher_type_control = defaultdict(defaultdict)
@@ -360,7 +367,7 @@ class PolicySolver:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         batter_patience_model = BatterSwings().to(device)
-        batter_patience_model.load_state_dict(torch.load('../../model_weights/batter_patience.pth', map_location=device))
+        batter_patience_model.load_state_dict(torch.load('../../model_weights/batter_patience.pth', map_location=device, weights_only=True))
         batter_patience_model.eval()
 
         # We only care about calculating the results for states that are unique to the model (which does not consider every variable)
@@ -613,4 +620,5 @@ def main(debug: bool = False, load=False):
 
 if __name__ == '__main__':
     seed()
+    BaseballData()
     main(debug=False, load=False)

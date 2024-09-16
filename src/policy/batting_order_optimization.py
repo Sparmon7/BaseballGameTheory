@@ -1,3 +1,9 @@
+from dotenv import load_dotenv
+load_dotenv()
+import sys
+import os
+sys.path.append(os.getenv('FOLDER'))
+
 import itertools
 import math
 import multiprocessing
@@ -9,8 +15,6 @@ from collections import defaultdict
 
 import numpy as np
 from tqdm import tqdm
-import sys
-sys.path.append('C:/Users/sparm/baseballResearch/ZeroSumBaseball')
 from src.data.data_loading import BaseballData, save_blosc2, load_blosc2
 from src.model.pitch_type import PitchType
 from src.model.players import Pitcher, Batter
@@ -513,4 +517,5 @@ def generate_lineups():
 
 if __name__ == '__main__':
     seed()
+    generate_lineups()
     test_against_rosters()

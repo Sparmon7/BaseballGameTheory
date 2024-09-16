@@ -1,3 +1,9 @@
+from dotenv import load_dotenv
+load_dotenv()
+import sys
+import os
+sys.path.append(os.getenv('FOLDER'))
+
 import json
 import os.path
 import pickle
@@ -20,8 +26,7 @@ try:
     from tqdm.notebook import tqdm
 except NameError:
     from tqdm import tqdm
-import sys
-sys.path.append('C:/Users/sparm/baseballResearch/ZeroSumBaseball')
+
 
 from src.data.code_mappings import pitch_type_mapping, pitch_result_mapping, at_bat_event_mapping, team_code_mapping, \
     team_name_mapping

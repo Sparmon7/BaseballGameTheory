@@ -131,7 +131,7 @@ def train(epochs: int = 30, batch_size: int = 128, learning_rate: float = 0.0003
     print(f'Using device: {device}')
 
     if os.path.isfile(path):
-        model.load_state_dict(torch.load(path))
+        model.load_state_dict(torch.load(path, weights_only=True))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.3)
