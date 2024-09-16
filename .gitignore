@@ -1,5 +1,5 @@
 raw_data/statcast
 processed_data
 myenv
-__pycache__/
+**/__pycache__
 *.blosc2
