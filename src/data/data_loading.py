@@ -33,7 +33,7 @@ from src.data.code_mappings import pitch_type_mapping, pitch_result_mapping, at_
 from src.model.state import GameState, PitchResult, Rules
 from src.model.pitch import Pitch
 from src.model.pitch_type import PitchType
-from src.model.players import Batter, Pitcher, min_obp_cutoff
+from src.model.players import Batter, Pitcher, Runner, min_obp_cutoff, min_run_attempts
 from src.model.zones import Zones, default
 
 
@@ -89,6 +89,7 @@ class BaseballData:
             players = load_blosc2(processed_data_dir + 'players.blosc2')
             self.pitchers: defaultdict[int, Pitcher] = players['pitchers']
             self.batters: defaultdict[int, Batter] = players['batters']
+            self.runners : defaultdict[int, Runner] = players['runners']
 
     @classmethod
     def process_data(cls, raw_data_dir: str = '../../raw_data/statcast/', processed_data_dir: str = default_processed_data_dir):
@@ -101,6 +102,7 @@ class BaseballData:
         # Keep track of players and statistics
         pitchers: defaultdict[int, Pitcher] = defaultdict(Pitcher)
         batters: defaultdict[int, Batter] = defaultdict(Batter)
+        runners: defaultdict[int, Runner] = defaultdict(Runner)
 
         pitcher_all_at_bats = defaultdict(set)
         pitcher_hits_against = defaultdict(int)
@@ -114,6 +116,10 @@ class BaseballData:
         batter_total_encountered = defaultdict(lambda: torch.zeros(pitch_statistics_shape))
         batter_total_swung = defaultdict(lambda: torch.zeros(pitch_statistics_shape))
         batter_total_hits = defaultdict(lambda: torch.zeros(pitch_statistics_shape))
+        
+        runner_shape = len(Runner.__slots__)
+        runner_total_attempts = defaultdict(lambda: torch.zeros(runner_shape))
+        runner_total_successes = defaultdict(lambda: torch.zeros(runner_shape))
 
         velocities = []  # To normalize the velocity data
 
@@ -123,14 +129,20 @@ class BaseballData:
             pitch_data = pitch_data.replace({np.nan: None})
 
             pitches = []
+            
+            #runner calculation variables
+            prior_1 = None
+            prior_2 = None
+            prior_res = None
+            prior_game = None
 
-            for row in pitch_data.itertuples(index=False):
+            for row in pitch_data[::-1].itertuples(index=False):
                 row: NamedTuple  # Consult https://baseballsavant.mlb.com/csv-docs for column names
                 state = GameState(inning=row.inning - 1, bottom=row.inning_topbot == 'Bot',
                                   balls=row.balls, strikes=row.strikes, runs=row.bat_score,
                                   outs=row.outs_when_up, first=bool(row.on_1b),
                                   second=bool(row.on_2b), third=bool(row.on_3b))
-
+                
                 pitch_type = pitch_type_mapping.get(row.pitch_type, None)
 
                 zone_idx = None
@@ -141,8 +153,46 @@ class BaseballData:
                     zone_idx, zone = zones.get_zone(plate_x, plate_z)
 
                 pitch_outcome = pitch_result_mapping.get(row.description, None)
+                
                 if pitch_outcome == PitchResult.HIT_SINGLE:
                     pitch_outcome = at_bat_event_mapping.get(row.events, PitchResult.HIT_SINGLE)
+               
+               #runner calculation
+                if prior_res is not None:
+                    if prior_game == row.game_pk: #checks to make sure same game in case of walk off or delay
+                        if prior_res == PitchResult.HIT_SINGLE:
+                            if prior_2 is not None:
+                                runner_total_attempts[prior_2][0] += 1
+                                runner_total_successes[prior_2][0] += 1
+                                if row.on_3b == prior_2:
+                                    runner_total_successes[prior_2][0] -=1
+                                    #no need to add data on 1b runner since they are held up by the runner
+                                elif prior_1 is not None:
+                                    runner_total_attempts[prior_1][1] += 1
+                                    runner_total_successes[prior_1][1] += 1
+                                    if row.on_2b == prior_1:
+                                        runner_total_successes[prior_1][1] -=1
+                            elif prior_1 is not None:
+                                runner_total_attempts[prior_1][1] += 1
+                                runner_total_successes[prior_1][1] += 1
+                                if row.on_2b == prior_1:
+                                    runner_total_successes[prior_1][1] -=1
+                        else:
+                            if prior_1 is not None:
+                                runner_total_attempts[prior_1][2] += 1
+                                runner_total_successes[prior_1][2] += 1
+                                if row.on_3b == prior_1:
+                                    runner_total_successes[prior_1][2] -=1  
+                    prior_res = None
+                    prior_1 = None
+                    prior_2= None
+                    prior_game = None
+                if (pitch_outcome == PitchResult.HIT_SINGLE or pitch_outcome == PitchResult.HIT_DOUBLE) and (row.on_1b is not None or row.on_2b is not None):  
+                    prior_res = pitch_outcome
+                    prior_1 = row.on_1b
+                    prior_2= row.on_2b
+                    prior_game = row.game_pk
+                    
 
                 pitch = Pitch(game_state=state, batter_id=row.batter, pitcher_id=row.pitcher,
                               pitch_type=pitch_type, location=zone_idx, pitch_result=pitch_outcome,
@@ -225,9 +275,23 @@ class BaseballData:
         for idx, pitcher in enumerate(pitcher_by_obp):
             pitcher.obp_percentile = idx / len(pitcher_by_obp)
 
+        # Aggregate runner statistics
+        summed_attempts = sum(runner_total_attempts.values())
+        summed_successes = sum(runner_total_successes.values())
+        for runner_id in batter_all_at_bats.keys():
+            runner = runners[runner_id]
+            for i,j in enumerate(Runner.__slots__):
+                if runner_total_attempts[runner_id][i] > min_run_attempts:
+                    setattr(runner, j, runner_total_successes[runner_id][i] / runner_total_attempts[runner_id][i])
+                else: 
+                    setattr(runner, j, summed_successes[i] / summed_attempts[i])
+            
+
+
         players = {
             'pitchers': pitchers,
-            'batters': batters
+            'batters': batters,
+            'runners': runners
         }
 
         save_blosc2(players, processed_data_dir + 'players.blosc2')
