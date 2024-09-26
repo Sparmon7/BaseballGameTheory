@@ -13,24 +13,13 @@ min_run_attempts = 10 # Minimum number of run attempts to consider a player for 
 
 class Runner:
     """
-    A Runner is represented by 3 probabilites:
-    - The probability of scoring from second on a single (otherwise assumed to reach third)
-    - The probability of reaching third from first on a single (otherwise assumed to reach second)
-    - The probability of scoring from first on a double (otherwise assumed to reach third)
-    
-    Assumptions:
-    - Does not account for the possibility of being thrown out
-    - Runner at first will never score on a single
-    - Runner will always advance at least as many bases as the hitter
+    A Runner is represented by the probability of advancing to each base given a single or double, conditioned on starting base
+    This is a 3D tensor of shape (2, 3, 3)
     """
     
-    __slots__ = ['second_to_home', 'first_to_third', 'first_to_home']
-    
-    def __init__(self, second_to_home: float | None = None, first_to_third: float | None = None, first_to_home: float| None = None):
-        self.second_to_home = second_to_home
-        self.first_to_third = first_to_third
-        self.first_to_home = first_to_home
-        
+    def __init__(self, data: torch.Tensor = None):
+        self.data = data
+   
 
 class Batter:
     """
