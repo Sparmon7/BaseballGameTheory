@@ -14,7 +14,7 @@ min_run_attempts = 10 # Minimum number of run attempts to consider a player for 
 class Runner:
     """
     A Runner is represented by the probability of advancing to each base given a single or double, conditioned on starting base
-    This is a 3D tensor of shape (2, 3, 3)
+    This is a 3D tensor of shape (2, 3, 3) for (single/double, starting base 1-3, ending base 2-home)
     """
     
     def __init__(self, data: torch.Tensor = None):
