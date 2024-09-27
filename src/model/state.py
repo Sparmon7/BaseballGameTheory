@@ -45,7 +45,6 @@ class Rules:
 
     fouls_end_at_bats = False
     two_base_game = False
-    stochastic_runners = True
 
 
 class DebugRules(Rules):
@@ -59,7 +58,6 @@ class DebugRules(Rules):
 
     fouls_end_at_bats = True  # This speeds up convergence significantly
     two_base_game = True  # This is a game with only two bases
-    stochastic_runners = False #Runners always advance same number of bases as hitters
 
 
 class GameState:
@@ -67,93 +65,72 @@ class GameState:
 
     __slots__ = ['inning', 'bottom', 'balls', 'strikes', 'num_runs', 'num_outs', 'first', 'second', 'third', 'batter']
 
-    def __init__(self, inning=0, bottom=True, balls=0, strikes=0, runs=0, outs=0, first=0, second=0, third=0, batter=0):
+    def __init__(self, inning=0, bottom=True, balls=0, strikes=0, runs=0, outs=0, first=False, second=False, third=False, batter=0):
         self.inning = inning
         self.bottom = bottom
         self.balls = balls
         self.strikes = strikes
         self.num_runs = runs
         self.num_outs = outs
-        self.first = first      
-        self.second = second    
-        self.third = third      
+        self.first = first      # True if runner on first
+        self.second = second    # True if runner on second
+        self.third = third      # True if runner on third
         self.batter = batter
 
-    def transition_from_pitch_result(self, result: PitchResult, rules: type[Rules] = Rules) -> list[tuple[Self, int, float]]:
+    def transition_from_pitch_result(self, result: PitchResult, rules: type[Rules] = Rules) -> tuple[Self, int]:
         """Return the next state, transitioning according to result and the supplied rule config class."""
-        rets = []
-        new_state = lambda: GameState(inning=self.inning, balls=self.balls, strikes=self.strikes, runs=self.num_runs,
+
+        next_state = GameState(inning=self.inning, balls=self.balls, strikes=self.strikes, runs=self.num_runs,
                                outs=self.num_outs, first=self.first, second=self.second, third=self.third, batter=self.batter)
+
+        if next_state.inning >= rules.num_innings or next_state.num_runs >= rules.max_runs:
+            return next_state, 0
+
         if (result == PitchResult.SWINGING_STRIKE or result == PitchResult.CALLED_STRIKE or
-                (result == PitchResult.SWINGING_FOUL and (self.strikes < rules.num_strikes - 1 or rules.fouls_end_at_bats))):
-            next_state = new_state()
+                (result == PitchResult.SWINGING_FOUL and (next_state.strikes < rules.num_strikes - 1 or rules.fouls_end_at_bats))):
             next_state.strikes += 1
-            if next_state.strikes == rules.num_strikes:
-                next_state.num_outs += 1
-                next_state.balls = next_state.strikes = 0
-                next_state.batter = (next_state.batter + 1) % rules.num_batters
-                if next_state.num_outs >= rules.num_outs:
-                    next_state.inning += 1
-                    next_state.num_outs = 0
-                    next_state.first = next_state.second = next_state.third = False
-            rets.append(tuple(next_state, 0, 1.0))
         elif result == PitchResult.CALLED_BALL:
-            next_state = new_state()
             next_state.balls += 1
-            if next_state.balls == rules.num_balls: 
-                if next_state.first:
-                    if next_state.second:
-                        if next_state.third:
-                            next_state.num_runs += 1
-                        if rules.two_base_game:
-                            next_state.num_runs += 1
-                            if next_state.num_runs > rules.max_runs:
-                                next_state.num_runs = rules.max_runs
-                        else:
-                            next_state.third = next_state.second
-                    next_state.second = next_state.first
-                next_state.first = next_state.batter
-                next_state.balls = next_state.strikes = 0
-                next_state.batter = (next_state.batter + 1) % rules.num_batters
-            rets.append(tuple(next_state, next_state.num_runs - self.num_runs, 1.0))
-        elif result == PitchResult.HIT_SINGLE: #do
+        elif result == PitchResult.HIT_SINGLE:
             next_state.move_batter(1, rules)
-        elif result == PitchResult.HIT_DOUBLE: #do
+        elif result == PitchResult.HIT_DOUBLE:
             next_state.move_batter(2, rules)
-        elif result == PitchResult.HIT_TRIPLE: 
-            next_state = new_state()
-            next_state.num_runs +=  int(next_state.first != 0) + int(next_state.second!= 0) + int(next_state.third!= 0) 
-            if next_state.num_runs > rules.max_runs:
-                next_state.num_runs = rules.max_runs
-            next_state.second = next_state.first = 0
-            next_state.third = next_state.batter
-            next_state.balls = next_state.strikes = 0
-            next_state.batter = (next_state.batter + 1) % rules.num_batters
-            if rules.two_base_game: 
-                self.num_runs += 1
-                self.third = 0
-            rets.append(tuple(next_state, next_state.num_runs - self.num_runs, 1.0))
+        elif result == PitchResult.HIT_TRIPLE:
+            next_state.move_batter(3, rules)
         elif result == PitchResult.HIT_HOME_RUN:
-            next_state = new_state()
-            next_state.num_runs += 1 + int(next_state.first != 0) + int(next_state.second!= 0) + int(next_state.third!= 0) 
-            if next_state.num_runs > rules.max_runs:
-                next_state.num_runs = rules.max_runs
-            next_state.first = next_state.second = next_state.third = 0
-            next_state.balls = next_state.strikes = 0
-            next_state.batter = (next_state.batter + 1) % rules.num_batters
-            rets.append(tuple(next_state, next_state.num_runs - self.num_runs, 1.0))
+            next_state.move_batter(4, rules)
         elif result == PitchResult.HIT_OUT:
-            next_state = new_state()
             next_state.num_outs += 1
             next_state.balls = next_state.strikes = 0
             next_state.batter = (next_state.batter + 1) % rules.num_batters
-            if next_state.num_outs >= rules.num_outs:
-                next_state.inning += 1
-                next_state.num_outs = 0
-                next_state.first = next_state.second = next_state.third = False
-            rets.append(tuple(next_state, 0, 1.0))
 
-        """DO!
+        if next_state.balls == rules.num_balls:  # Walk
+            next_state.move_batter(1, rules)
+        if next_state.strikes == rules.num_strikes:
+            next_state.num_outs += 1
+            next_state.balls = next_state.strikes = 0
+            next_state.batter = (next_state.batter + 1) % rules.num_batters
+
+        if next_state.num_runs > rules.max_runs:
+            next_state.num_runs = rules.max_runs
+
+        if next_state.num_outs >= rules.num_outs:
+            next_state.inning += 1
+            next_state.num_outs = 0
+            next_state.first = next_state.second = next_state.third = False
+
+        return next_state, next_state.num_runs - self.num_runs
+
+    def move_batter(self, num_bases: int, rules: type[Rules] = Rules):
+        """A helper method, advances runners and resets count"""
+
+        if num_bases >= 4:
+            self.num_runs += 1 + int(self.first) + int(self.second) + int(self.third)
+            self.first = self.second = self.third = False
+        elif num_bases == 3:
+            self.num_runs += int(self.first) + int(self.second) + int(self.third)
+            self.first = self.second = False
+            self.third = True
         elif num_bases == 2:
             self.num_runs += int(self.second) + int(self.third)
             self.third = self.first
@@ -165,17 +142,12 @@ class GameState:
             self.second = self.first
             self.first = True
 
-        if rules.two_base_game: 
+        if rules.two_base_game:
             self.num_runs += int(self.third)
             self.third = False
+
         self.balls = self.strikes = 0
         self.batter = (self.batter + 1) % rules.num_batters
-        if next_state.num_runs > rules.max_runs:
-            next_state.num_runs = rules.max_runs
-            return next_state, 0
-        """
-        return rets
-        
 
     def value(self) -> int:
         """
