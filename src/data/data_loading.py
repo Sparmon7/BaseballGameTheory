@@ -273,7 +273,6 @@ class BaseballData:
         runner_totals = torch.zeros(runner_shape)
         for value in runner_results.values():
             runner_totals += value
-        
         #change counts to probabilities
         for hitType in range(2):
             for starting_base in range(3):

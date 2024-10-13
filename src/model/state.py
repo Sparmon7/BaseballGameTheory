@@ -45,6 +45,7 @@ class Rules:
 
     fouls_end_at_bats = False
     two_base_game = False
+    runner_stochastic = True
 
 
 class DebugRules(Rules):
@@ -58,6 +59,7 @@ class DebugRules(Rules):
 
     fouls_end_at_bats = True  # This speeds up convergence significantly
     two_base_game = True  # This is a game with only two bases
+    runner_stochastic=False #This assumes all runners are identical and speeds up calculation
 
 
 class GameState:
@@ -65,20 +67,81 @@ class GameState:
 
     __slots__ = ['inning', 'bottom', 'balls', 'strikes', 'num_runs', 'num_outs', 'first', 'second', 'third', 'batter']
 
-    def __init__(self, inning=0, bottom=True, balls=0, strikes=0, runs=0, outs=0, first=False, second=False, third=False, batter=0):
+    def __init__(self, inning=0, bottom=True, balls=0, strikes=0, runs=0, outs=0, first=-1, second=-1, third=-1, batter=-1):
         self.inning = inning
         self.bottom = bottom
         self.balls = balls
         self.strikes = strikes
         self.num_runs = runs
         self.num_outs = outs
-        self.first = first      # True if runner on first
-        self.second = second    # True if runner on second
-        self.third = third      # True if runner on third
+        self.first = first   
+        self.second = second  
+        self.third = third     
         self.batter = batter
 
-    def transition_from_pitch_result(self, result: PitchResult, rules: type[Rules] = Rules) -> tuple[Self, int]:
+    def checkValidity(self, result: PitchResult, firstBase, secondBase, thirdBase):
+        #checking that inputted transition bases are valid, going case by case with all 8 combos of runners on base
+        if firstBase < -1 or firstBase > 2 or secondBase < -1 or secondBase > 2 or thirdBase < -1 or thirdBase > 2 or thirdBase == 0:
+            return False
+        
+        if self.third!=-1:
+            if self.second!=-1:
+                if self.first!=-1:
+                    if firstBase > secondBase or secondBase > thirdBase:
+                        return False
+                    if firstBase< 2 and firstBase >=secondBase:
+                        return False
+                    if secondBase<2 and secondBase >= thirdBase:
+                        return False
+                    if firstBase==-1 or (firstBase==0 and result == PitchResult.HIT_DOUBLE):
+                        return False
+                    
+                else:
+                    if secondBase > thirdBase:
+                        return False
+                    if secondBase<2 and secondBase >= thirdBase:
+                        return False
+                    if secondBase==-1 or (secondBase==0 and result == PitchResult.HIT_DOUBLE):
+                        return False 
+                    
+            else:
+                if self.first!=-1:
+                    if firstBase > thirdBase:
+                        return False
+                    if firstBase< 2 and firstBase >= thirdBase:
+                        return False
+                    if firstBase==-1 or (firstBase==0 and result == PitchResult.HIT_DOUBLE):
+                        return False
+                    
+                else:
+                    if thirdBase == -1:
+                        return False
+                
+        else:
+            if self.second!=-1:
+                if self.first!=-1:
+                    if firstBase > secondBase:
+                        return False
+                    if firstBase< 2 and firstBase >=secondBase:
+                        return False
+                    if firstBase==-1 or (firstBase==0 and result == PitchResult.HIT_DOUBLE):
+                        return False
+                    
+                else:
+                    if secondBase == -1 or (secondBase==0 and result == PitchResult.HIT_DOUBLE):
+                        return False
+                
+            else:
+                if self.first!=-1:
+                    if firstBase == -1 or (firstBase==0 and result == PitchResult.HIT_DOUBLE):
+                        return False
+                    
+            
+        return True 
+               
+    def transition_from_pitch_result(self, result: PitchResult, rules: type[Rules] = Rules, firstBase: int = -1, secondBase: int = -1, thirdBase: int = -1) -> tuple[Self, int]:
         """Return the next state, transitioning according to result and the supplied rule config class."""
+        """The three base variables indicate what base the player ends at [-1,0,1,2]=[None,second,third,home]"""
 
         next_state = GameState(inning=self.inning, balls=self.balls, strikes=self.strikes, runs=self.num_runs,
                                outs=self.num_outs, first=self.first, second=self.second, third=self.third, batter=self.batter)
@@ -92,9 +155,14 @@ class GameState:
         elif result == PitchResult.CALLED_BALL:
             next_state.balls += 1
         elif result == PitchResult.HIT_SINGLE:
-            next_state.move_batter(1, rules)
+            if rules.runner_stochastic:
+                if not self.checkValidity(result,firstBase,secondBase,thirdBase):
+                    return None, None
+            next_state.move_batter(1, rules, firstBase, secondBase, thirdBase)
         elif result == PitchResult.HIT_DOUBLE:
-            next_state.move_batter(2, rules)
+            if not self.checkValidity(result,firstBase,secondBase,thirdBase):
+                    return None, None
+            next_state.move_batter(2, rules, firstBase, secondBase, thirdBase)
         elif result == PitchResult.HIT_TRIPLE:
             next_state.move_batter(3, rules)
         elif result == PitchResult.HIT_HOME_RUN:
@@ -121,30 +189,76 @@ class GameState:
 
         return next_state, next_state.num_runs - self.num_runs
 
-    def move_batter(self, num_bases: int, rules: type[Rules] = Rules):
+    def move_batter(self, num_bases: int, rules: type[Rules] = Rules, firstBase: int = -1, secondBase: int = -1, thirdBase: int = -1):
         """A helper method, advances runners and resets count"""
-
         if num_bases >= 4:
-            self.num_runs += 1 + int(self.first) + int(self.second) + int(self.third)
-            self.first = self.second = self.third = False
+            self.num_runs += 1 + int(self.first != -1) + int(self.second != -1) + int(self.third != -1)
+            self.first = self.second = self.third = -1
         elif num_bases == 3:
-            self.num_runs += int(self.first) + int(self.second) + int(self.third)
-            self.first = self.second = False
-            self.third = True
+            self.num_runs += int(self.first!=-1) + int(self.second!=-1) + int(self.third!=-1)
+            self.first = self.second = -1
+            self.third = self.batter
         elif num_bases == 2:
-            self.num_runs += int(self.second) + int(self.third)
-            self.third = self.first
-            self.first = False
-            self.second = True
+            if rules.runner_stochastic:
+                if self.third!=-1:
+                    if thirdBase ==2:
+                        self.num_runs += 1
+                        self.third = -1
+                if self.second!=-1:
+                    if secondBase == 2:
+                        self.num_runs += 1
+                        self.second = -1
+                    elif secondBase == 1:
+                        self.third = self.second
+                        self.second=-1
+                if self.first!=-1:
+                    if firstBase == 2:
+                        self.num_runs += 1
+                        self.first = -1
+                    elif firstBase == 1:
+                        self.third = self.first
+                        self.first=-1
+                self.second = self.batter
+                        
+            else:
+                self.num_runs += int(self.second!=-1) + int(self.third!=-1)
+                self.third = self.first
+                self.first = -1
+                self.second = self.batter
         elif num_bases == 1:
-            self.num_runs += int(self.third)
-            self.third = self.second
-            self.second = self.first
-            self.first = True
+            if rules.runner_stochastic:
+                if self.third!=-1:
+                    if thirdBase ==2:
+                        self.num_runs += 1
+                        self.third = -1
+                if self.second!=-1:
+                    if secondBase == 2:
+                        self.num_runs += 1
+                        self.second = -1
+                    elif secondBase == 1:
+                        self.third = self.second
+                        self.second=-1
+                if self.first!=-1:
+                    if firstBase == 2:
+                        self.num_runs += 1
+                        self.first = -1
+                    elif firstBase == 1:
+                        self.third = self.first
+                        self.first=-1
+                    elif firstBase == 0:
+                        self.second = self.first
+                        self.first=-1
+                self.first=self.batter
+                        
+            else:
+                self.num_runs += int(self.third!=-1)
+                self.third = self.second
+                self.second = self.first
+                self.first =self.batter
 
         if rules.two_base_game:
-            self.num_runs += int(self.third)
-            self.third = False
+            self.num_runs += int(self.third!=-1)
+            self.third = -1
 
         self.balls = self.strikes = 0
         self.batter = (self.batter + 1) % rules.num_batters
