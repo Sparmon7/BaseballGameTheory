@@ -84,10 +84,8 @@ class PolicySolver:
         self.pitcher_actions: list[A] = [(pitch_type, zone_i) for zone_i in range(len(default.ZONES)) for pitch_type in PitchType]
         self.batter_actions: list[O] = [False, True]  # Order is important!
 
-        third_options = [False, True] if not rules.two_base_game else [False]
-        base_options = range(rules.num_batters) if rules.runner_stochastic else [False, True]
-        if not rules.two_base_game and rules.runner_stochastic:
-            third_options = base_options
+        base_options = range(-1, rules.num_batters) 
+        third_options =[-1] if rules.two_base_game else base_options
         
         self.game_states: list[S] = [
             GameState(inning=inning, balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third, batter=batter)
@@ -234,9 +232,14 @@ class PolicySolver:
                     take_probs = 1 - swing_probs
 
 
-                    #FIGURE OUT HOW TO ADJUST THE NEXT 4 LINES, MAY NEED TO ADJUST SWING OUTCOMES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    #FIGURE OUT HOW TO ADJUST THE NEXT 4 LINE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     # Handle swing outcomes (stochastic)
                     result_probs = swing_outcomes[(self.pitcher_id, self.batter_lineup[state.batter])][state_i, pitch_type]
+                    for i in result_probs:
+                        print(i)
+                        
+                    print()
+                    
                     transition_probs = np.dot(swing_to_transition_matrix[state_i], result_probs.transpose())
                     zone_swing_probs = swing_probs * outcome_zone_probs
                     probabilities[state_i, action_i, batter_swung] += np.dot(transition_probs, zone_swing_probs[0:len(default.ZONES)] + zone_swing_probs[len(default.ZONES):])
@@ -263,10 +266,8 @@ class PolicySolver:
         swing_outcome = {}
 
         # We only care about calculating the results for states that are unique to the model (which does not consider every variable)
-        third_options = [False, True] if not self.rules.two_base_game else [False]
-        base_options = range(self.rules.num_batters) if self.rules.runner_stochastic else [False, True]
-        if not self.rules.two_base_game and self.rules.runner_stochastic:
-            third_options = base_options
+        base_options = range(-1, self.rules.num_batters) 
+        third_options =[-1] if self.rules.two_base_game else base_options
         interested_states = [self.total_states_dict[GameState(balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third)]
                              for balls in range(self.rules.num_balls) for strikes in range(self.rules.num_strikes) for outs in range(self.rules.num_outs)
                              for first in base_options for second in base_options for third in third_options]
@@ -377,8 +378,9 @@ class PolicySolver:
         batter_patience_model.eval()
 
         # We only care about calculating the results for states that are unique to the model (which does not consider every variable)
-        third_options = [False, True] if not self.rules.two_base_game else [False]
-        base_options = range(self.rules.num_batters) if self.rules.runner_stochastic else [False, True]
+        base_options = range(-1, self.rules.num_batters) 
+        third_options =[-1] if self.rules.two_base_game else base_options
+
         if not self.rules.two_base_game and self.rules.runner_stochastic:
             third_options = base_options
         interested_states = [self.total_states_dict[GameState(balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third)]
