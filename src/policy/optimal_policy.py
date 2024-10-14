@@ -234,7 +234,7 @@ class PolicySolver:
                     take_probs = 1 - swing_probs
 
 
-                    #FIGURE OUT HOW TO ADJUST THE NEXT 4 LINES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    #FIGURE OUT HOW TO ADJUST THE NEXT 4 LINES, MAY NEED TO ADJUST SWING OUTCOMES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     # Handle swing outcomes (stochastic)
                     result_probs = swing_outcomes[(self.pitcher_id, self.batter_lineup[state.batter])][state_i, pitch_type]
                     transition_probs = np.dot(swing_to_transition_matrix[state_i], result_probs.transpose())
