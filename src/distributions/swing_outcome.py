@@ -46,8 +46,7 @@ class SwingOutcome(nn.Module):
         self.output = nn.Linear(32, len(SwingResult))
 
     def forward(self, pitcher: Tensor, batter: Tensor, pitch: Tensor, strikes: Tensor, balls: Tensor,
-                num_runs: Tensor, num_outs: Tensor, batter_on_first: Tensor, second: Tensor, third: Tensor,
-                softmax: bool = False) -> Tensor:
+                num_runs: Tensor, num_outs: Tensor, softmax: bool = False) -> Tensor:
         pitcher = self.p_dropout_1(pitcher)
         pitcher = F.relu(self.p_conv_1(pitcher))
         pitcher = F.relu(self.p_conv_2(pitcher))
@@ -71,12 +70,9 @@ class SwingOutcome(nn.Module):
         balls = balls.unsqueeze(1)
         num_runs = num_runs.unsqueeze(1)
         num_outs = num_outs.unsqueeze(1)
-        batter_on_first = batter_on_first.unsqueeze(1)
-        second = second.unsqueeze(1)
-        third = third.unsqueeze(1)
 
         output = torch.cat((pitcher, batter, pitch, strikes, balls,
-                            num_runs, num_outs, batter_on_first, second, third), dim=1)
+                            num_runs, num_outs), dim=1)
         output = F.relu(self.linear_1(output))
         output = F.relu(self.linear_2(output))
         output = F.relu(self.linear_3(output))
@@ -96,10 +92,7 @@ def map_swing_outcome(idx: int, pitch: Pitch, bd: BaseballData):
                   torch.tensor(pitch.game_state.strikes, dtype=torch.float32),
                   torch.tensor(pitch.game_state.balls, dtype=torch.float32),
                   torch.tensor(pitch.game_state.num_runs, dtype=torch.float32),
-                  torch.tensor(pitch.game_state.num_outs, dtype=torch.float32),
-                  torch.tensor(pitch.game_state.first, dtype=torch.float32),
-                  torch.tensor(pitch.game_state.second, dtype=torch.float32),
-                  torch.tensor(pitch.game_state.third, dtype=torch.float32)),
+                  torch.tensor(pitch.game_state.num_outs, dtype=torch.float32)),
             SwingResult.from_pitch_result(pitch.result).get_one_hot_encoding())
 
 

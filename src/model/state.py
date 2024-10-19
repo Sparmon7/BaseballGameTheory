@@ -157,11 +157,11 @@ class GameState:
         elif result == PitchResult.HIT_SINGLE:
             if rules.runner_stochastic:
                 if not self.checkValidity(result,firstBase,secondBase,thirdBase):
-                    return None, None
+                    return None, 0
             next_state.move_batter(1, rules, firstBase, secondBase, thirdBase)
         elif result == PitchResult.HIT_DOUBLE:
             if not self.checkValidity(result,firstBase,secondBase,thirdBase):
-                    return None, None
+                    return None, 0
             next_state.move_batter(2, rules, firstBase, secondBase, thirdBase)
         elif result == PitchResult.HIT_TRIPLE:
             next_state.move_batter(3, rules)

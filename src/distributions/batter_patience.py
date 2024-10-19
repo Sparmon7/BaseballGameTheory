@@ -41,8 +41,7 @@ class BatterSwings(nn.Module):
 
         self.output = nn.Linear(32, 1)
 
-    def forward(self, batter: Tensor, pitch: Tensor, strikes: Tensor, balls: Tensor, num_runs: Tensor,
-                num_outs: Tensor, batter_on_first: Tensor, second: Tensor, third: Tensor) -> Tensor:
+    def forward(self, batter: Tensor, pitch: Tensor, strikes: Tensor, balls: Tensor, num_runs: Tensor, num_outs: Tensor) -> Tensor:
         batter = self.b_dropout_1(batter)
         batter = F.relu(self.b_conv_1(batter))
         batter = F.relu(self.b_conv_2(batter))
@@ -59,12 +58,8 @@ class BatterSwings(nn.Module):
         balls = balls.unsqueeze(1)
         num_runs = num_runs.unsqueeze(1)
         num_outs = num_outs.unsqueeze(1)
-        batter_on_first = batter_on_first.unsqueeze(1)
-        second = second.unsqueeze(1)
-        third = third.unsqueeze(1)
 
-        output = torch.cat((batter, pitch, strikes, balls, num_runs,
-                            num_outs, batter_on_first, second, third), dim=1)
+        output = torch.cat((batter, pitch, strikes, balls, num_runs, num_outs), dim=1)
         output = F.relu(self.linear_1(output))
         output = F.relu(self.linear_2(output))
         output = F.relu(self.linear_3(output))
@@ -73,7 +68,7 @@ class BatterSwings(nn.Module):
         return output
 
 
-def batter_patience_map(bd: BaseballData, pitch_idx: int, pitch: Pitch) -> (int, (Tensor, Tensor, Tensor, Tensor), Tensor):
+def batter_patience_map(bd: BaseballData, pitch_idx: int, pitch: Pitch):
     """
     We map the pitch to the batter, pitch, and game state data, and the swing outcome. The pitch index
     is included for utility purposes in other contexts, since this map is also used manually outside this class.
@@ -83,10 +78,7 @@ def batter_patience_map(bd: BaseballData, pitch_idx: int, pitch: Pitch) -> (int,
                         torch.tensor(pitch.game_state.strikes, dtype=torch.float32),
                         torch.tensor(pitch.game_state.balls, dtype=torch.float32),
                         torch.tensor(pitch.game_state.num_runs, dtype=torch.float32),
-                        torch.tensor(pitch.game_state.num_outs, dtype=torch.float32),
-                        torch.tensor(int(pitch.game_state.first), dtype=torch.float32),
-                        torch.tensor(int(pitch.game_state.second), dtype=torch.float32),
-                        torch.tensor(int(pitch.game_state.third), dtype=torch.float32)),
+                        torch.tensor(pitch.game_state.num_outs, dtype=torch.float32)),
             torch.tensor(int(pitch.result.batter_swung()), dtype=torch.float32))
 
 

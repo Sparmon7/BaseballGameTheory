@@ -140,8 +140,8 @@ class BaseballData:
                 row: NamedTuple  # Consult https://baseballsavant.mlb.com/csv-docs for column names
                 state = GameState(inning=row.inning - 1, bottom=row.inning_topbot == 'Bot',
                                   balls=row.balls, strikes=row.strikes, runs=row.bat_score,
-                                  outs=row.outs_when_up, first=bool(row.on_1b),
-                                  second=bool(row.on_2b), third=bool(row.on_3b))
+                                  outs=row.outs_when_up, first= 0 if bool(row.on_1b) else -1,
+                                  second= 0 if bool(row.on_1b) else -1, third= 0 if bool(row.on_1b) else -1)
                 
             
                 pitch_type = pitch_type_mapping.get(row.pitch_type, None)
