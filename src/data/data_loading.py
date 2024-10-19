@@ -3,7 +3,6 @@ load_dotenv()
 import sys
 import os
 sys.path.append(os.getenv('FOLDER'))
-
 import json
 import os.path
 import pickle
@@ -141,7 +140,7 @@ class BaseballData:
                 state = GameState(inning=row.inning - 1, bottom=row.inning_topbot == 'Bot',
                                   balls=row.balls, strikes=row.strikes, runs=row.bat_score,
                                   outs=row.outs_when_up, first= 0 if bool(row.on_1b) else -1,
-                                  second= 0 if bool(row.on_1b) else -1, third= 0 if bool(row.on_1b) else -1)
+                                  second= 0 if bool(row.on_2b) else -1, third= 0 if bool(row.on_3b) else -1)
                 
             
                 pitch_type = pitch_type_mapping.get(row.pitch_type, None)
