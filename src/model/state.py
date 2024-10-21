@@ -67,7 +67,7 @@ class GameState:
 
     __slots__ = ['inning', 'bottom', 'balls', 'strikes', 'num_runs', 'num_outs', 'first', 'second', 'third', 'batter']
 
-    def __init__(self, inning=0, bottom=True, balls=0, strikes=0, runs=0, outs=0, first=-1, second=-1, third=-1, batter=-1):
+    def __init__(self, inning=0, bottom=True, balls=0, strikes=0, runs=0, outs=0, first=-1, second=-1, third=-1, batter=0):
         self.inning = inning
         self.bottom = bottom
         self.balls = balls
@@ -79,7 +79,14 @@ class GameState:
         self.third = third     
         self.batter = batter
 
-    def checkValidity(self, result: PitchResult, firstBase, secondBase, thirdBase):
+    def checkValidity(self, rules=Rules):
+        
+        if (self.first!=self.second or self.first==-1) and (self.first!=self.third or self.first==-1) and (self.second!=self.third or self.second==-1) and ((self.batter-self.first +8) % rules.num_batters < 3 or self.first==-1) and ((self.batter-self.second +8) % rules.num_batters < 4 or self.second==-1) and ( (self.batter - self.third  +8) % rules.num_batters < 5 or self.third==-1):
+            return True
+        else:
+            return False
+    
+    def checkTransValidity(self, result: PitchResult, firstBase, secondBase, thirdBase):
         #checking that inputted transition bases are valid, going case by case with all 8 combos of runners on base
         if firstBase < -1 or firstBase > 2 or secondBase < -1 or secondBase > 2 or thirdBase < -1 or thirdBase > 2 or thirdBase == 0:
             return False
@@ -156,11 +163,11 @@ class GameState:
             next_state.balls += 1
         elif result == PitchResult.HIT_SINGLE:
             if rules.runner_stochastic:
-                if not self.checkValidity(result,firstBase,secondBase,thirdBase):
+                if not self.checkTransValidity(result,firstBase,secondBase,thirdBase):
                     return None, 0
             next_state.move_batter(1, rules, firstBase, secondBase, thirdBase)
         elif result == PitchResult.HIT_DOUBLE:
-            if not self.checkValidity(result,firstBase,secondBase,thirdBase):
+            if not self.checkTransValidity(result,firstBase,secondBase,thirdBase):
                     return None, 0
             next_state.move_batter(2, rules, firstBase, secondBase, thirdBase)
         elif result == PitchResult.HIT_TRIPLE:
@@ -226,7 +233,7 @@ class GameState:
                 self.first = -1
                 self.second = self.batter
         elif num_bases == 1:
-            if rules.runner_stochastic:
+            if rules.runner_stochastic or (firstBase!=-1 or secondBase!=-1 or thirdBase!=-1):
                 if self.third!=-1:
                     if thirdBase ==2:
                         self.num_runs += 1
@@ -254,7 +261,7 @@ class GameState:
                 self.num_runs += int(self.third!=-1)
                 self.third = self.second
                 self.second = self.first
-                self.first =self.batter
+                self.first = self.batter
 
         if rules.two_base_game:
             self.num_runs += int(self.third!=-1)
@@ -273,7 +280,7 @@ class GameState:
 
     def __repr__(self):
         return (f"GameState(i{self.inning} b{self.batter}: {self.balls}/{self.strikes}, {self.num_outs}, "
-                f"{'x' if self.first else '-'}{'x' if self.second else '-'}{'x' if self.third else '-'})")
+                f"{self.first}{self.second}{self.third})")
 
     def __hash__(self):
         return hash((self.inning, self.balls, self.strikes, self.num_outs, self.first, self.second, self.third, self.batter))
