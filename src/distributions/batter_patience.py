@@ -1,5 +1,9 @@
-import os
 
+from dotenv import load_dotenv
+load_dotenv()
+import sys
+import os
+sys.path.append(os.getenv('FOLDER'))
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
@@ -35,7 +39,7 @@ class BatterSwings(nn.Module):
         self.pitch_conv_2 = nn.Conv2d(32, 64, 3)
         self.pitch_linear = nn.Linear(64, 64)
 
-        self.linear_1 = nn.Linear(128 + 64 + 7, 128)
+        self.linear_1 = nn.Linear(128 + 64 + 4, 128)
         self.linear_2 = nn.Linear(128, 64)
         self.linear_3 = nn.Linear(64, 32)
 
@@ -107,8 +111,10 @@ def train(epochs: int = 50, batch_size: int = 512, learning_rate: float = 0.001,
 
     print(f'Using device: {device}')
 
+
+    
     if os.path.isfile(path):
-        model.load_state_dict(torch.load(path, weights_only=True))
+        model.load_state_dict(torch.load(path, weights_only=True, map_location=device))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.3)

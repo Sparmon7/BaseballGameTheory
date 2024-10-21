@@ -1,5 +1,8 @@
+from dotenv import load_dotenv
+load_dotenv()
+import sys
 import os
-
+sys.path.append(os.getenv('FOLDER'))
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
@@ -40,7 +43,7 @@ class SwingOutcome(nn.Module):
         self.pitch_conv_2 = nn.Conv2d(32, 64, 3)
         self.pitch_linear = nn.Linear(64, 64)
 
-        self.linear_1 = nn.Linear(128 + 128 + 64 + 7, 128)
+        self.linear_1 = nn.Linear(128 + 128 + 64 + 4, 128)
         self.linear_2 = nn.Linear(128, 64)
         self.linear_3 = nn.Linear(64, 32)
         self.output = nn.Linear(32, len(SwingResult))
@@ -124,7 +127,7 @@ def train(epochs: int = 30, batch_size: int = 128, learning_rate: float = 0.0003
     print(f'Using device: {device}')
 
     if os.path.isfile(path):
-        model.load_state_dict(torch.load(path, weights_only=True))
+        model.load_state_dict(torch.load(path, weights_only=True, map_location=device))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.3)
