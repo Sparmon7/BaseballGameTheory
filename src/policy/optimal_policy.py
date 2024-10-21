@@ -78,7 +78,7 @@ class PolicySolver:
 
         # BatterPatienceDistribution indexing relies on COMBINED_ZONES = ZONES + BORDERLINE_ZONES in that order
         assert default.COMBINED_ZONES[len(default.ZONES)] == default.BORDERLINE_ZONES[0]
-
+        self.rules = rules
         self.bd = bd
         self.pitcher_id = pitcher_id
         self.batter_lineup = batter_lineup
@@ -91,28 +91,31 @@ class PolicySolver:
         if not rules.two_base_game and rules.runner_stochastic:
             third_options = base_options
 
-        self.game_states: list[S] = [
+        game: list[S] = [
             GameState(inning=inning, balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third, batter=batter)
             for inning in range(rules.num_innings) for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)
             for first in base_options for second in base_options for third in third_options for batter in range(rules.num_batters)
         ]
+        self.game_states = [i for i in game if i.checkValidity(self.rules)]
         
         self.playerless_states: list[S] = [
             GameState(inning=inning, balls=balls, strikes=strikes, outs=outs)
             for inning in range(rules.num_innings) for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)]
 
+
         # Terminal states are stored separately for easier indexing
-        self.final_states: list[S] = [
+        final: list[S] = [
             GameState(inning=rules.num_innings, balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third, batter=batter)
             for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)
             for first in base_options for second in base_options for third in third_options for batter in range(rules.num_batters)
         ]
-    
+        self.final_states = [i for i in final if i.checkValidity(self.rules)]
+        
 
-        tot = self.game_states + self.final_states
-        self.total_states = [i for i in tot if i.batter!=i.first and i.batter!=i.second and i.batter!=i.third and (i.first!=i.second or i.first==-1) and (i.first!=i.third or i.first==-1) and (i.second!=i.third or i.second==-1)]
+        self.total_states = self.game_states + self.final_states
         self.total_states_dict = {state: i for i, state in enumerate(self.total_states)}
-        self.rules = rules
+        
+        
 
         self.transitions = None
         self.transition_distribution = None
@@ -187,6 +190,7 @@ class PolicySolver:
         batter_patiences = self.calculate_batter_patience_distribution(self.batter_lineup, batch_size=batch_size) \
             if batter_patiences is None else batter_patiences
 
+
         if save_distributions:
             save_blosc2({'swing_outcomes': swing_outcomes, 'pitcher_control': pitcher_control, 'batter_patience': batter_patiences}, f'{path}distributions.blosc2')
 
@@ -199,81 +203,197 @@ class PolicySolver:
             return s + [(-1, 0)] * (self.max_transitions - len(s))
 
 
-
-
-
-
-
-
-
+        
+        
+        
+        
+        
+        #my attempt:
+        def fill_transitions(s):
+            print(s)
+            arr =[]
+            for i in range(4):
+                arr.append(map_t(s.transition_from_pitch_result(i, rules=self.rules)))
+            for i in range(6,9):
+                arr.append(map_t(s.transition_from_pitch_result(i, rules=self.rules)))
+            
+            if s.first !=-1:
+                if s.second !=-1:
+                    if s.third !=-1:
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=1, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=2, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, secondBase=2, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=1, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, secondBase=2, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, secondBase=2, thirdBase=2)))
+                    else:
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, secondBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, secondBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, secondBase=2)))
+                else:
+                    if s.third !=-1:
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, thirdBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, thirdBase=2)))
+                    else:
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2)))
+            else:
+                if s.second!=-1:
+                    if s.third !=-1:
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, secondBase=0, thirdBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, secondBase=0, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, secondBase=1, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, secondBase=2, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, secondBase=1, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, secondBase=2, thirdBase=2)))
+                    else:
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, secondBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, secondBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, secondBase=2)))
+                else:
+                    if s.third!=-1:
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, thirdBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, thirdBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, thirdBase=2)))
+                    else:
+                       arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules)))
+                       arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules)))
+                
+            return pad(arr)
+        
+        def list_transitions(s):
+            arr =[]
+            for i in range(4):
+                arr.append(s.transition_from_pitch_result(i, rules=self.rules)[0])
+            for i in range(6,9):
+                arr.append(s.transition_from_pitch_result(i, rules=self.rules)[0])
+            
+            if s.first !=-1:
+                if s.second !=-1:
+                    if s.third !=-1:
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=1, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=2, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, secondBase=2, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=1, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, secondBase=2, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, secondBase=2, thirdBase=2)[0])
+                    else:
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, secondBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, secondBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, secondBase=2)[0])
+                else:
+                    if s.third !=-1:
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, thirdBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, thirdBase=2)[0])
+                    else:
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2)[0])
+            else:
+                if s.second!=-1:
+                    if s.third !=-1:
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, secondBase=0, thirdBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, secondBase=0, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, secondBase=1, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, secondBase=2, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, secondBase=1, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, secondBase=2, thirdBase=2)[0])
+                    else:
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, secondBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, secondBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, secondBase=2)[0])
+                else:
+                    if s.third!=-1:
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, thirdBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, thirdBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, thirdBase=2)[0])
+                    else:
+                       arr.append(s.transition_from_pitch_result(4, rules=self.rules)[0])
+                       arr.append(s.transition_from_pitch_result(5, rules=self.rules)[0])
+                
+            return arr
+            
+        #idea: BaseballData.players.runners[self.batter_lineup[s.first]]
               
-
-        # Since a state can only transition to a limited number of states, we're able to store the transition indexes in
-        # a fixed size array. Empty transitions are padded with (-1, 0)
-        
-        transitions = np.asarray([pad([map_t(state.transition_from_pitch_result(result, rules=self.rules))
-                                       for result in PitchResult]) for state in self.game_states], dtype=np.int32)
-        probabilities = np.zeros((len(self.game_states), len(self.pitcher_actions), len(self.batter_actions), self.max_transitions), dtype=np.float32)
+        transitions = np.asarray([fill_transitions(state) for state in self.game_states], dtype=np.int32)
         print(transitions)
-        print(transitions.shape)
-        # Used to transform swing outcome probabilities to transition probabilities. A matrix like this is necessary since
-        # multiple swing outcomes can lead to the same state
-        swing_to_transition_matrix = np.asarray([
-            np.asarray([transitions[state_i, :, 0] == self.total_states_dict[self.total_states[state_i].transition_from_pitch_result(result.to_pitch_result(), rules=self.rules)[0]]
-                        for result in SwingResult]).transpose()
-            for state_i in range(len(self.game_states))
-        ])
-        print(swing_to_transition_matrix)
-        print(swing_to_transition_matrix.shape)
+        probabilities = np.zeros((len(self.game_states), len(self.pitcher_actions), len(self.batter_actions), self.max_transitions), dtype=np.float32)
+        
+        # # Used to transform swing outcome probabilities to transition probabilities. A matrix like this is necessary since multiple swing outcomes can lead to the same state
+        # swing_to_transition_matrix = np.asarray([
+        #     np.asarray([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_transitions[self.total_states_dict[state_i]]]).transpose()
+        #     for state_i in range(len(self.game_states))
+        # ])
+        
+        # borderline_mask = np.asarray([zone.is_borderline for zone in default.COMBINED_ZONES])
+        # strike_mask = np.asarray([zone.is_strike for zone in default.COMBINED_ZONES])
+
+        # # It's important for indexing that these are at the start
+        # called_ball_i = 0
+        # called_strike_i = 1
+        # assert PitchResult.CALLED_BALL == called_ball_i
+        # assert PitchResult.CALLED_STRIKE == called_strike_i
         
         
-        borderline_mask = np.asarray([zone.is_borderline for zone in default.COMBINED_ZONES])
-        strike_mask = np.asarray([zone.is_strike for zone in default.COMBINED_ZONES])
 
-        # It's important for indexing that these are at the start
-        called_ball_i = 0
-        called_strike_i = 1
-        assert PitchResult.CALLED_BALL == called_ball_i
-        assert PitchResult.CALLED_STRIKE == called_strike_i
 
-        # Iterate over each state
-        # At the cost of readability, we use numpy operations to speed up the calculations (if necessary, even the remaining for loops can be removed)
-        for state_i, state in tqdm(enumerate(self.game_states), desc='Calculating transition distribution', total=len(self.game_states)):
-            for action_i, action in enumerate(self.pitcher_actions):
-                pitch_type, intended_zone_i = action
-                for batter_swung in range(len(self.batter_actions)):
-                    # Given an intended pitch, we get the actual outcome distribution
-                    outcome_zone_probs = pitcher_control[action_i]
+        # #old:               
+        # # Iterate over each state
+        # # At the cost of readability, we use numpy operations to speed up the calculations (if necessary, even the remaining for loops can be removed)
+        # for state_i, state in tqdm(enumerate(self.game_states), desc='Calculating transition distribution', total=len(self.game_states)):
+        #     for action_i, action in enumerate(self.pitcher_actions):
+        #         pitch_type, intended_zone_i = action
+        #         for batter_swung in range(len(self.batter_actions)):
+        #             # Given an intended pitch, we get the actual outcome distribution
+        #             outcome_zone_probs = pitcher_control[action_i]
 
-                    swing_probs = np.zeros(len(default.COMBINED_ZONES)) + batter_swung
+        #             swing_probs = np.zeros(len(default.COMBINED_ZONES)) + batter_swung
 
-                    # On obvious balls, the batter will not swing
-                    swing_probs[~strike_mask] = 0
+        #             # On obvious balls, the batter will not swing
+        #             swing_probs[~strike_mask] = 0
                     
                     
-                    playerless_state = GameState(inning=state.inning, balls=state.balls, strikes=state.strikes, outs=state.num_outs)
+        #             playerless_state = GameState(inning=state.inning, balls=state.balls, strikes=state.strikes, outs=state.num_outs)
                     
                     
 
-                    # On borderline balls, if the batter has chosen to swing, we override the decision with the batter's patience
-                    if batter_swung:
-                        swing_probs[borderline_mask] = batter_patiences[self.batter_lineup[state.batter]][playerless_state, pitch_type]
-                    take_probs = 1 - swing_probs
+        #             # On borderline balls, if the batter has chosen to swing, we override the decision with the batter's patience
+        #             if batter_swung:
+        #                 swing_probs[borderline_mask] = batter_patiences[self.batter_lineup[state.batter]][playerless_state, pitch_type]
+        #             take_probs = 1 - swing_probs
 
-                    # Handle swing outcomes (stochastic)
-                    result_probs = swing_outcomes[(self.pitcher_id, self.batter_lineup[state.batter])][playerless_state, pitch_type]
+        #             # Handle swing outcomes (stochastic)
+        #             result_probs = swing_outcomes[(self.pitcher_id, self.batter_lineup[state.batter])][playerless_state, pitch_type]
             
                     
-                    transition_probs = np.dot(swing_to_transition_matrix[state_i], result_probs.transpose())
-                    zone_swing_probs = swing_probs * outcome_zone_probs
-                    probabilities[state_i, action_i, batter_swung] += np.dot(transition_probs, zone_swing_probs[0:len(default.ZONES)] + zone_swing_probs[len(default.ZONES):])
+        #             transition_probs = np.dot(swing_to_transition_matrix[state_i], result_probs.transpose())
+        #             zone_swing_probs = swing_probs * outcome_zone_probs
+        #             probabilities[state_i, action_i, batter_swung] += np.dot(transition_probs, zone_swing_probs[0:len(default.ZONES)] + zone_swing_probs[len(default.ZONES):])
 
-                    # Handle take outcome (deterministic)
-                    probabilities[state_i, action_i, batter_swung, called_strike_i] += np.dot(take_probs, outcome_zone_probs * strike_mask)
-                    probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)
-
-
-
+        #             # Handle take outcome (deterministic)
+        #             probabilities[state_i, action_i, batter_swung, called_strike_i] += np.dot(take_probs, outcome_zone_probs * strike_mask)
+        #             probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)
 
 
         return transitions, probabilities
@@ -608,6 +728,7 @@ def test_era(bd: BaseballData, pitcher_id: int, batter_lineup: list[int], load=F
 
 
 def main(debug: bool = False, load=False):
+
     if not debug:
         bd = BaseballData(load_pitches=False)
 
