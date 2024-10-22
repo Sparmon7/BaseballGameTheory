@@ -81,7 +81,8 @@ class GameState:
 
     def checkValidity(self, rules=Rules):
         
-        if (self.first!=self.second or self.first==-1) and (self.first!=self.third or self.first==-1) and (self.second!=self.third or self.second==-1) and ((self.batter-self.first +8) % rules.num_batters < 3 or self.first==-1) and ((self.batter-self.second +8) % rules.num_batters < 4 or self.second==-1) and ( (self.batter - self.third  +8) % rules.num_batters < 5 or self.third==-1):
+        if (self.first!=self.second or self.first==-1) and (self.first!=self.third or self.first==-1) and (self.second!=self.third or self.second==-1) and \
+        ((self.batter-self.first +8) % rules.num_batters < (self.num_outs + 1) or self.first==-1) and ((self.batter-self.second +8) % rules.num_batters < (self.num_outs + 1 + int(self.first!=-1)) or self.second==-1) and ( (self.batter - self.third  +8) % rules.num_batters < (self.num_outs + 1 + int(self.second!=-1) + int(self.first!=-1)) or self.third==-1):
             return True
         else:
             return False
@@ -180,7 +181,15 @@ class GameState:
             next_state.batter = (next_state.batter + 1) % rules.num_batters
 
         if next_state.balls == rules.num_balls:  # Walk
-            next_state.move_batter(1, rules)
+            if next_state.first!=-1:
+                if next_state.second!=-1:
+                    if next_state.third!=-1:
+                        next_state.num_runs += 1
+                    next_state.third = next_state.second
+                next_state.second = next_state.first
+            next_state.first = next_state.batter
+            next_state.balls = next_state.strikes = 0
+            next_state.batter = (next_state.batter + 1) % rules.num_batters
         if next_state.strikes == rules.num_strikes:
             next_state.num_outs += 1
             next_state.balls = next_state.strikes = 0
@@ -192,7 +201,7 @@ class GameState:
         if next_state.num_outs >= rules.num_outs:
             next_state.inning += 1
             next_state.num_outs = 0
-            next_state.first = next_state.second = next_state.third = False
+            next_state.first = next_state.second = next_state.third = -1
 
         return next_state, next_state.num_runs - self.num_runs
 

@@ -66,7 +66,7 @@ class PolicySolver:
     # that can be reached from a single state is limited
     type Transitions = np.ndarray  # [S_i][0-7] -> (next state index, reward)
     type TransitionDistribution = np.ndarray  # [S_i][A_i][O_i][0-7] -> probability
-    max_transitions = 12
+    max_transitions = 13
 
     default_batch: int = 512
 
@@ -210,7 +210,6 @@ class PolicySolver:
         
         #my attempt:
         def fill_transitions(s):
-            print(s)
             arr =[]
             for i in range(4):
                 arr.append(map_t(s.transition_from_pitch_result(i, rules=self.rules)))
@@ -223,14 +222,14 @@ class PolicySolver:
                         arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=1, thirdBase=2)))
                         arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=2, thirdBase=2)))
                         arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, secondBase=2, thirdBase=2)))
-                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=1, thirdBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=2, thirdBase=2)))
                         arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, secondBase=2, thirdBase=2)))
                         arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, secondBase=2, thirdBase=2)))
                     else:
                         arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=1)))
                         arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=2)))
                         arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, secondBase=2)))
-                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=1)))
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=2)))
                         arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, secondBase=2)))
                         arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, secondBase=2)))
                 else:
@@ -335,27 +334,31 @@ class PolicySolver:
             return arr
             
         #idea: BaseballData.players.runners[self.batter_lineup[s.first]]
-              
         transitions = np.asarray([fill_transitions(state) for state in self.game_states], dtype=np.int32)
-        print(transitions)
         probabilities = np.zeros((len(self.game_states), len(self.pitcher_actions), len(self.batter_actions), self.max_transitions), dtype=np.float32)
         
-        # # Used to transform swing outcome probabilities to transition probabilities. A matrix like this is necessary since multiple swing outcomes can lead to the same state
-        # swing_to_transition_matrix = np.asarray([
-        #     np.asarray([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_transitions[self.total_states_dict[state_i]]]).transpose()
-        #     for state_i in range(len(self.game_states))
-        # ])
         
-        # borderline_mask = np.asarray([zone.is_borderline for zone in default.COMBINED_ZONES])
-        # strike_mask = np.asarray([zone.is_strike for zone in default.COMBINED_ZONES])
 
-        # # It's important for indexing that these are at the start
-        # called_ball_i = 0
-        # called_strike_i = 1
-        # assert PitchResult.CALLED_BALL == called_ball_i
-        # assert PitchResult.CALLED_STRIKE == called_strike_i
+        
+        # Used to transform swing outcome probabilities to transition probabilities. A matrix like this is necessary since multiple swing outcomes can lead to the same state
+        swing_to_transition_matrix = np.asarray([
+            np.asarray([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_transitions[self.total_states_dict[state_i]]]).transpose()
+            for state_i in range(len(self.game_states))
+        ])
+        
+        borderline_mask = np.asarray([zone.is_borderline for zone in default.COMBINED_ZONES])
+        strike_mask = np.asarray([zone.is_strike for zone in default.COMBINED_ZONES])
+
+        # It's important for indexing that these are at the start
+        called_ball_i = 0
+        called_strike_i = 1
+        assert PitchResult.CALLED_BALL == called_ball_i
+        assert PitchResult.CALLED_STRIKE == called_strike_i
         
         
+
+
+
 
 
         # #old:               
