@@ -182,7 +182,6 @@ class PolicySolver:
         This method is complicated by the fact that both the pitch outcome and the swing outcome
         are stochastic.
         """
-
         swing_outcomes = self.calculate_swing_outcome_distribution([(self.pitcher_id, batter_id) for batter_id in self.batter_lineup], batch_size=batch_size) \
             if swing_outcomes is None else swing_outcomes
         pitcher_control = self.calculate_pitcher_control_distribution([self.pitcher_id], batch_size=batch_size)[self.pitcher_id] \
@@ -203,10 +202,9 @@ class PolicySolver:
             return s + [(-1, 0)] * (self.max_transitions - len(s))
 
 
-        
-        
-        
-        
+    
+    
+           
         
         #my attempt:
         def fill_transitions(s):
@@ -284,14 +282,14 @@ class PolicySolver:
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=1, thirdBase=2)[0])
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=2, thirdBase=2)[0])
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, secondBase=2, thirdBase=2)[0])
-                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=1, thirdBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=2, thirdBase=2)[0])
                         arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, secondBase=2, thirdBase=2)[0])
                         arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, secondBase=2, thirdBase=2)[0])
                     else:
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=1)[0])
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=2)[0])
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, secondBase=2)[0])
-                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=1)[0])
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=2, secondBase=2)[0])
                         arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=1, secondBase=2)[0])
                         arr.append(s.transition_from_pitch_result(5, rules=self.rules, firstBase=2, secondBase=2)[0])
                 else:
@@ -330,21 +328,27 @@ class PolicySolver:
                     else:
                        arr.append(s.transition_from_pitch_result(4, rules=self.rules)[0])
                        arr.append(s.transition_from_pitch_result(5, rules=self.rules)[0])
-                
-            return arr
             
+            
+            return arr
+              
+        def pad_list(s):
+            for i in range(self.max_transitions-len(s)):
+                s.append([False]*self.max_transitions)
+            return s
+                      
         #idea: BaseballData.players.runners[self.batter_lineup[s.first]]
         transitions = np.asarray([fill_transitions(state) for state in self.game_states], dtype=np.int32)
         probabilities = np.zeros((len(self.game_states), len(self.pitcher_actions), len(self.batter_actions), self.max_transitions), dtype=np.float32)
         
-        
-
-        
         # Used to transform swing outcome probabilities to transition probabilities. A matrix like this is necessary since multiple swing outcomes can lead to the same state
         swing_to_transition_matrix = np.asarray([
-            np.asarray([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_transitions[self.total_states_dict[state_i]]]).transpose()
+            np.asarray(pad_list([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_transitions(self.total_states[state_i])])).transpose()
             for state_i in range(len(self.game_states))
         ])
+        
+        
+        
         
         borderline_mask = np.asarray([zone.is_borderline for zone in default.COMBINED_ZONES])
         strike_mask = np.asarray([zone.is_strike for zone in default.COMBINED_ZONES])
