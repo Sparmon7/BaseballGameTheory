@@ -15,6 +15,14 @@ class Runner:
     """
     A Runner is represented by the probability of advancing to each base given a single or double, conditioned on starting base
     This is a 3D tensor of shape (2, 3, 3) for (single/double, starting base 1-3, ending base 2-home)
+    Averaged:
+        0.7, 0.26, 0.04
+        0.05, 0.38, 0.56
+        0, 0.06, 0.94
+
+        0, 0.56, 0.44
+        0, 0.01, 0.99
+        0, 0, 0.99
     """
     
     def __init__(self, data: torch.Tensor = None):

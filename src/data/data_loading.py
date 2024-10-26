@@ -160,9 +160,9 @@ class BaseballData:
                 #updating runner counts
                 if prior_res is not None:
                     if prior_game == row.game_pk: #checks to make sure same game in case of walk off or delay
-                        hitType=1
-                        if prior_res == PitchResult.HIT_SINGLE:
-                            hitType=0
+                        hitType=0
+                        if prior_res == PitchResult.HIT_DOUBLE:
+                            hitType=1
                         for index, runnerId in enumerate([prior_1, prior_2, prior_3]):
                             if runnerId is not None:
                                 if row.on_2b == runnerId:

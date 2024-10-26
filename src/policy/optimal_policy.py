@@ -249,8 +249,10 @@ class PolicySolver:
                         arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, secondBase=1, thirdBase=2)))
                         arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, secondBase=2, thirdBase=2)))
                     else:
+                        arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, secondBase=0)))                       
                         arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, secondBase=1)))
                         arr.append(map_t(s.transition_from_pitch_result(4, rules=self.rules, secondBase=2)))
+                        arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, secondBase=1)))
                         arr.append(map_t(s.transition_from_pitch_result(5, rules=self.rules, secondBase=2)))
                 else:
                     if s.third!=-1:
@@ -265,14 +267,16 @@ class PolicySolver:
             return pad(arr)
         
         #lists all possible next states from s when swinging
-        def list_transitions(s):
+        def list_swing_transitions(s):
+
             arr =[]
             for i in [2,3,6,7,8]:
                 arr.append(s.transition_from_pitch_result(i, rules=self.rules)[0])
             
             if s.first !=-1:
                 if s.second !=-1:
-                    if s.third !=-1:
+                    if s.third !=-1:                           
+                        
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=1, thirdBase=2)[0])
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=0, secondBase=2, thirdBase=2)[0])
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, firstBase=1, secondBase=2, thirdBase=2)[0])
@@ -310,8 +314,10 @@ class PolicySolver:
                         arr.append(s.transition_from_pitch_result(5, rules=self.rules, secondBase=1, thirdBase=2)[0])
                         arr.append(s.transition_from_pitch_result(5, rules=self.rules, secondBase=2, thirdBase=2)[0])
                     else:
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules, secondBase=0)[0])
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, secondBase=1)[0])
                         arr.append(s.transition_from_pitch_result(4, rules=self.rules, secondBase=2)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules, secondBase=1)[0])                        
                         arr.append(s.transition_from_pitch_result(5, rules=self.rules, secondBase=2)[0])
                 else:
                     if s.third!=-1:
@@ -320,9 +326,8 @@ class PolicySolver:
                         arr.append(s.transition_from_pitch_result(5, rules=self.rules, thirdBase=1)[0])
                         arr.append(s.transition_from_pitch_result(5, rules=self.rules, thirdBase=2)[0])
                     else:
-                       arr.append(s.transition_from_pitch_result(4, rules=self.rules)[0])
-                       arr.append(s.transition_from_pitch_result(5, rules=self.rules)[0])
-            
+                        arr.append(s.transition_from_pitch_result(4, rules=self.rules)[0])
+                        arr.append(s.transition_from_pitch_result(5, rules=self.rules)[0])
             
             return arr
               
@@ -331,34 +336,107 @@ class PolicySolver:
                 s.append([False]*self.max_transitions)
             return s
           
-        def adjust_probs(probs, state):
+        def adjust_probs(probs, s):
             ret =[]
             for i in probs:
-                ret.append(helper_adjust_probs(i, state))
+                arr = []
+                for j in [2,3,6,7,8]:
+                    arr.append(i[SwingResult.from_pitch_result(PitchResult(j))])
+                if s.first !=-1:
+                    if s.second !=-1:
+                        if s.third !=-1:
+                            first = self.bd.runners[self.batter_lineup[s.first]].data
+                            second=self.bd.runners[self.batter_lineup[s.second]].data
+                            arr.append(i[3]* (second[0,1,1]/(second[0,1,1]+second[0,1,2])))
+                            arr.append(i[3]* (second[0,1,2]/(second[0,1,1]+second[0,1,2])) * first[0,0,0])
+                            arr.append(i[3]* (second[0,1,2]/(second[0,1,1]+second[0,1,2])) * first[0,0,1])
+                            arr.append(i[3]* (second[0,1,2]/(second[0,1,1]+second[0,1,2])) * first[0,0,2])
+                            arr.append(i[4] * first[1,0,1])
+                            arr.append(i[4] * first[1,0,2])
+                        else:
+                            first = self.bd.runners[self.batter_lineup[s.first]].data
+                            second=self.bd.runners[self.batter_lineup[s.second]].data
+                            arr.append(i[3]*(second[0,1,1]/(second[0,1,1]+second[0,1,2])))
+                            arr.append(i[3]*second[0,1,2]/(second[0,1,1]+second[0,1,2]) * first[0,0,0])
+                            arr.append(i[3]*second[0,1,2]/(second[0,1,1]+second[0,1,2]) * first[0,0,1])
+                            arr.append(i[3]*second[0,1,2]/(second[0,1,1]+second[0,1,2]) * first[0,0,2])
+                            arr.append(i[4]*first[1,0,1])
+                            arr.append(i[4]*first[1,0,2])
+                    else:
+                        if s.third !=-1:
+                            first = self.bd.runners[self.batter_lineup[s.first]].data
+                            third = self.bd.runners[self.batter_lineup[s.third]].data
+                            arr.append(i[3]*third[0,2,2] * first[0,0,0])
+                            arr.append(i[3]*third[0,2,2] * first[0,0,1])
+                            arr.append(i[3]*third[0,2,2] * first[0,0,2])
+                            arr.append(i[3]*third[0,2,1])
+                            arr.append(i[4]*first[1,0,1])
+                            arr.append(i[4]*first[1,0,2])
+                        else:
+                            first = self.bd.runners[self.batter_lineup[s.first]].data
+                            arr.append(i[3]*first[0,0,0])
+                            arr.append(i[3]*first[0,0,1])
+                            arr.append(i[3]*first[0,0,2])
+                            arr.append(i[4]*first[1,0,1])
+                            arr.append(i[4]*first[1,0,2])
+                else:
+                    if s.second!=-1:
+                        if s.third !=-1:
+                            third=self.bd.runners[self.batter_lineup[s.third]].data
+                            second=self.bd.runners[self.batter_lineup[s.second]].data
+                            arr.append(i[3]*third[0,2,1])
+                            arr.append(i[3]*third[0,2,2]*second[0,1,0])
+                            arr.append(i[3]*third[0,2,2]*second[0,1,1])
+                            arr.append(i[3]*third[0,2,2]*second[0,1,2])
+                            arr.append(i[4]*second[1,1,1])
+                            arr.append(i[4]*second[1,1,2])
+                        else:
+                            second=self.bd.runners[self.batter_lineup[s.second]].data
+                            arr.append(i[3]*second[0,1,0])
+                            arr.append(i[3]*second[0,1,1])
+                            arr.append(i[3]*second[0,1,2])
+                            arr.append(i[4]*second[1,1,1])
+                            arr.append(i[4]*second[1,1,2])
+                    else:
+                        if s.third!=-1:
+                            third = self.bd.runners[self.batter_lineup[s.third]].data
+                            arr.append(i[3]*third[0,2,1])
+                            arr.append(i[3]*third[0,2,2])
+                            arr.append(i[4]*third[1,2,1])
+                            arr.append(i[4]*third[1,2,2])
+                        else:
+                            arr.append(i[3])
+                            arr.append(i[4])
+            
+                tempLength = len(arr)
+                for i in range(self.max_transitions- tempLength):
+                    arr.append(0)
+                ret.append(arr)
             return np.array(ret)
             
-        def helper_adjust_probs(probs, state):
-            #DO!!!!
-            #idea: BaseballData.players.runners[self.batter_lineup[s.first]]
-            
-            
-            
-            
-            
-            
-            return probs
+
                     
-        #transitions: for each state, stores the number (corresponding to which state) and amount of runs
+        #transitions: for each state, stores the number (corresponding to which state) and amount of runs for all possible future states
         transitions = np.asarray([fill_transitions(state) for state in self.game_states], dtype=np.int32)
         
         #stores probabilities of each occurrence
         probabilities = np.zeros((len(self.game_states), len(self.pitcher_actions), len(self.batter_actions), self.max_transitions), dtype=np.float32)
         
-        # Used to transform swing outcome probabilities to transition probabilities. A matrix like this is necessary since multiple swing outcomes can lead to the same state
+        
+        
+        
+        
+        
+        # for each state, for each result from swinging, map true to the matching state in transitions
         swing_to_transition_matrix = np.asarray([
-            np.asarray(pad_list([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_transitions(self.total_states[state_i])])).transpose()
+            np.asarray(pad_list([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_swing_transitions(self.total_states[state_i])])).transpose()
             for state_i in range(len(self.game_states))
         ])
+        
+        
+        
+        
+        
         
         borderline_mask = np.asarray([zone.is_borderline for zone in default.COMBINED_ZONES])
         strike_mask = np.asarray([zone.is_strike for zone in default.COMBINED_ZONES])
@@ -384,20 +462,21 @@ class PolicySolver:
                     # On obvious balls, the batter will not swing
                     swing_probs[~strike_mask] = 0
                     
-                    
                     playerless_state = GameState(inning=state.inning, balls=state.balls, strikes=state.strikes, outs=state.num_outs)
-                    
-                    
 
                     # On borderline balls, if the batter has chosen to swing, we override the decision with the batter's patience
                     if batter_swung:
                         swing_probs[borderline_mask] = batter_patiences[self.batter_lineup[state.batter]][self.playerless_states_dict[playerless_state], pitch_type]
                     take_probs = 1 - swing_probs
                 
+
+                
+                
+                
                 
                     # Handle swing outcomes (stochastic)
                     result_probs = adjust_probs(swing_outcomes[(self.pitcher_id, self.batter_lineup[state.batter])][self.playerless_states_dict[playerless_state], pitch_type], state)
-                    
+
                     transition_probs = np.dot(swing_to_transition_matrix[state_i], result_probs.transpose())
                     zone_swing_probs = swing_probs * outcome_zone_probs
                     probabilities[state_i, action_i, batter_swung] += np.dot(transition_probs, zone_swing_probs[0:len(default.ZONES)] + zone_swing_probs[len(default.ZONES):])
@@ -405,7 +484,9 @@ class PolicySolver:
                     # Handle take outcome (deterministic)
                     probabilities[state_i, action_i, batter_swung, called_strike_i] += np.dot(take_probs, outcome_zone_probs * strike_mask)
                     probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)
-            
+        
+        
+        
         
 
 
@@ -729,8 +810,8 @@ def test_era(bd: BaseballData, pitcher_id: int, batter_lineup: list[int], load=F
     print(f'Pitcher OBP: {bd.pitchers[pitcher_id].obp}, Batter (first) OBP: {bd.batters[batter_lineup[0]].obp}')
 
     solver = PolicySolver(bd, pitcher_id, batter_lineup, rules=Rules)
-    solver.initialize_distributions(save_distributions=True, load_distributions=load, load_transition=True)
     solver.set_batter_permutation(batter_permutation)
+    solver.initialize_distributions(save_distributions=True, load_distributions=load, load_transition=True)
     solver.calculate_optimal_policy(print_output=True, beta=2e-4)
 
     first_batter = 0 if batter_permutation is None else batter_permutation[0]
