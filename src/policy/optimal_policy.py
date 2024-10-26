@@ -66,7 +66,7 @@ class PolicySolver:
     # that can be reached from a single state is limited
     type Transitions = np.ndarray  # [S_i][0-7] -> (next state index, reward)
     type TransitionDistribution = np.ndarray  # [S_i][A_i][O_i][0-7] -> probability
-    max_transitions = 13
+    max_transitions = 11
 
     default_batch: int = 512
 
@@ -101,7 +101,7 @@ class PolicySolver:
         self.playerless_states: list[S] = [
             GameState(inning=inning, balls=balls, strikes=strikes, outs=outs)
             for inning in range(rules.num_innings) for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)]
-
+        self.playerless_states_dict = {state: i for i, state in enumerate(self.playerless_states)}
 
         # Terminal states are stored separately for easier indexing
         final: list[S] = [
@@ -201,12 +201,7 @@ class PolicySolver:
             s = list(dict.fromkeys(s).keys())
             return s + [(-1, 0)] * (self.max_transitions - len(s))
 
-
-    
-    
-           
-        
-        #my attempt:
+        #lists all possible next states from s
         def fill_transitions(s):
             arr =[]
             for i in range(4):
@@ -269,11 +264,10 @@ class PolicySolver:
                 
             return pad(arr)
         
+        #lists all possible next states from s when swinging
         def list_transitions(s):
             arr =[]
-            for i in range(4):
-                arr.append(s.transition_from_pitch_result(i, rules=self.rules)[0])
-            for i in range(6,9):
+            for i in [2,3,6,7,8]:
                 arr.append(s.transition_from_pitch_result(i, rules=self.rules)[0])
             
             if s.first !=-1:
@@ -336,9 +330,28 @@ class PolicySolver:
             for i in range(self.max_transitions-len(s)):
                 s.append([False]*self.max_transitions)
             return s
-                      
-        #idea: BaseballData.players.runners[self.batter_lineup[s.first]]
+          
+        def adjust_probs(probs, state):
+            ret =[]
+            for i in probs:
+                ret.append(helper_adjust_probs(i, state))
+            return np.array(ret)
+            
+        def helper_adjust_probs(probs, state):
+            #DO!!!!
+            #idea: BaseballData.players.runners[self.batter_lineup[s.first]]
+            
+            
+            
+            
+            
+            
+            return probs
+                    
+        #transitions: for each state, stores the number (corresponding to which state) and amount of runs
         transitions = np.asarray([fill_transitions(state) for state in self.game_states], dtype=np.int32)
+        
+        #stores probabilities of each occurrence
         probabilities = np.zeros((len(self.game_states), len(self.pitcher_actions), len(self.batter_actions), self.max_transitions), dtype=np.float32)
         
         # Used to transform swing outcome probabilities to transition probabilities. A matrix like this is necessary since multiple swing outcomes can lead to the same state
@@ -346,9 +359,6 @@ class PolicySolver:
             np.asarray(pad_list([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_transitions(self.total_states[state_i])])).transpose()
             for state_i in range(len(self.game_states))
         ])
-        
-        
-        
         
         borderline_mask = np.asarray([zone.is_borderline for zone in default.COMBINED_ZONES])
         strike_mask = np.asarray([zone.is_strike for zone in default.COMBINED_ZONES])
@@ -360,47 +370,43 @@ class PolicySolver:
         assert PitchResult.CALLED_STRIKE == called_strike_i
         
         
+        # Iterate over each state
+        # At the cost of readability, we use numpy operations to speed up the calculations (if necessary, even the remaining for loops can be removed)
+        for state_i, state in tqdm(enumerate(self.game_states), desc='Calculating transition distribution', total=len(self.game_states)):
+            for action_i, action in enumerate(self.pitcher_actions):
+                pitch_type, intended_zone_i = action
+                for batter_swung in range(len(self.batter_actions)):
+                    # Given an intended pitch, we get the actual outcome distribution
+                    outcome_zone_probs = pitcher_control[action_i]
 
+                    swing_probs = np.zeros(len(default.COMBINED_ZONES)) + batter_swung
 
-
-
-
-        # #old:               
-        # # Iterate over each state
-        # # At the cost of readability, we use numpy operations to speed up the calculations (if necessary, even the remaining for loops can be removed)
-        # for state_i, state in tqdm(enumerate(self.game_states), desc='Calculating transition distribution', total=len(self.game_states)):
-        #     for action_i, action in enumerate(self.pitcher_actions):
-        #         pitch_type, intended_zone_i = action
-        #         for batter_swung in range(len(self.batter_actions)):
-        #             # Given an intended pitch, we get the actual outcome distribution
-        #             outcome_zone_probs = pitcher_control[action_i]
-
-        #             swing_probs = np.zeros(len(default.COMBINED_ZONES)) + batter_swung
-
-        #             # On obvious balls, the batter will not swing
-        #             swing_probs[~strike_mask] = 0
+                    # On obvious balls, the batter will not swing
+                    swing_probs[~strike_mask] = 0
                     
                     
-        #             playerless_state = GameState(inning=state.inning, balls=state.balls, strikes=state.strikes, outs=state.num_outs)
+                    playerless_state = GameState(inning=state.inning, balls=state.balls, strikes=state.strikes, outs=state.num_outs)
                     
                     
 
-        #             # On borderline balls, if the batter has chosen to swing, we override the decision with the batter's patience
-        #             if batter_swung:
-        #                 swing_probs[borderline_mask] = batter_patiences[self.batter_lineup[state.batter]][playerless_state, pitch_type]
-        #             take_probs = 1 - swing_probs
+                    # On borderline balls, if the batter has chosen to swing, we override the decision with the batter's patience
+                    if batter_swung:
+                        swing_probs[borderline_mask] = batter_patiences[self.batter_lineup[state.batter]][self.playerless_states_dict[playerless_state], pitch_type]
+                    take_probs = 1 - swing_probs
+                
+                
+                    # Handle swing outcomes (stochastic)
+                    result_probs = adjust_probs(swing_outcomes[(self.pitcher_id, self.batter_lineup[state.batter])][self.playerless_states_dict[playerless_state], pitch_type], state)
+                    
+                    transition_probs = np.dot(swing_to_transition_matrix[state_i], result_probs.transpose())
+                    zone_swing_probs = swing_probs * outcome_zone_probs
+                    probabilities[state_i, action_i, batter_swung] += np.dot(transition_probs, zone_swing_probs[0:len(default.ZONES)] + zone_swing_probs[len(default.ZONES):])
 
-        #             # Handle swing outcomes (stochastic)
-        #             result_probs = swing_outcomes[(self.pitcher_id, self.batter_lineup[state.batter])][playerless_state, pitch_type]
+                    # Handle take outcome (deterministic)
+                    probabilities[state_i, action_i, batter_swung, called_strike_i] += np.dot(take_probs, outcome_zone_probs * strike_mask)
+                    probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)
             
-                    
-        #             transition_probs = np.dot(swing_to_transition_matrix[state_i], result_probs.transpose())
-        #             zone_swing_probs = swing_probs * outcome_zone_probs
-        #             probabilities[state_i, action_i, batter_swung] += np.dot(transition_probs, zone_swing_probs[0:len(default.ZONES)] + zone_swing_probs[len(default.ZONES):])
-
-        #             # Handle take outcome (deterministic)
-        #             probabilities[state_i, action_i, batter_swung, called_strike_i] += np.dot(take_probs, outcome_zone_probs * strike_mask)
-        #             probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)
+        
 
 
         return transitions, probabilities
