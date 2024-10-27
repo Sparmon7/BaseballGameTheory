@@ -335,7 +335,11 @@ class PolicySolver:
             for i in range(self.max_transitions-len(s)):
                 s.append([False]*self.max_transitions)
             return s
-          
+        
+        #storing runners for easier lookup
+        runners = [self.bd.runners[self.batter_lineup[i]].data for i in range(len(self.batter_lineup))]
+
+        #calculating probability of each swing transition using runner probabilities
         def adjust_probs(probs, s):
             ret =[]
             for i in probs:
@@ -345,8 +349,8 @@ class PolicySolver:
                 if s.first !=-1:
                     if s.second !=-1:
                         if s.third !=-1:
-                            first = self.bd.runners[self.batter_lineup[s.first]].data
-                            second=self.bd.runners[self.batter_lineup[s.second]].data
+                            first = runners[s.first]
+                            second=runners[s.second]
                             arr.append(i[3]* (second[0,1,1]/(second[0,1,1]+second[0,1,2])))
                             arr.append(i[3]* (second[0,1,2]/(second[0,1,1]+second[0,1,2])) * first[0,0,0])
                             arr.append(i[3]* (second[0,1,2]/(second[0,1,1]+second[0,1,2])) * first[0,0,1])
@@ -354,8 +358,8 @@ class PolicySolver:
                             arr.append(i[4] * first[1,0,1])
                             arr.append(i[4] * first[1,0,2])
                         else:
-                            first = self.bd.runners[self.batter_lineup[s.first]].data
-                            second=self.bd.runners[self.batter_lineup[s.second]].data
+                            first = runners[s.first]
+                            second=runners[s.second]
                             arr.append(i[3]*(second[0,1,1]/(second[0,1,1]+second[0,1,2])))
                             arr.append(i[3]*second[0,1,2]/(second[0,1,1]+second[0,1,2]) * first[0,0,0])
                             arr.append(i[3]*second[0,1,2]/(second[0,1,1]+second[0,1,2]) * first[0,0,1])
@@ -364,8 +368,8 @@ class PolicySolver:
                             arr.append(i[4]*first[1,0,2])
                     else:
                         if s.third !=-1:
-                            first = self.bd.runners[self.batter_lineup[s.first]].data
-                            third = self.bd.runners[self.batter_lineup[s.third]].data
+                            first = runners[s.first]
+                            third = runners[s.third]
                             arr.append(i[3]*third[0,2,2] * first[0,0,0])
                             arr.append(i[3]*third[0,2,2] * first[0,0,1])
                             arr.append(i[3]*third[0,2,2] * first[0,0,2])
@@ -373,7 +377,7 @@ class PolicySolver:
                             arr.append(i[4]*first[1,0,1])
                             arr.append(i[4]*first[1,0,2])
                         else:
-                            first = self.bd.runners[self.batter_lineup[s.first]].data
+                            first = runners[s.first]
                             arr.append(i[3]*first[0,0,0])
                             arr.append(i[3]*first[0,0,1])
                             arr.append(i[3]*first[0,0,2])
@@ -382,8 +386,8 @@ class PolicySolver:
                 else:
                     if s.second!=-1:
                         if s.third !=-1:
-                            third=self.bd.runners[self.batter_lineup[s.third]].data
-                            second=self.bd.runners[self.batter_lineup[s.second]].data
+                            third=runners[s.third]
+                            second=runners[s.second]
                             arr.append(i[3]*third[0,2,1])
                             arr.append(i[3]*third[0,2,2]*second[0,1,0])
                             arr.append(i[3]*third[0,2,2]*second[0,1,1])
@@ -391,7 +395,7 @@ class PolicySolver:
                             arr.append(i[4]*second[1,1,1])
                             arr.append(i[4]*second[1,1,2])
                         else:
-                            second=self.bd.runners[self.batter_lineup[s.second]].data
+                            second=runners[s.second]
                             arr.append(i[3]*second[0,1,0])
                             arr.append(i[3]*second[0,1,1])
                             arr.append(i[3]*second[0,1,2])
@@ -399,7 +403,7 @@ class PolicySolver:
                             arr.append(i[4]*second[1,1,2])
                     else:
                         if s.third!=-1:
-                            third = self.bd.runners[self.batter_lineup[s.third]].data
+                            third = runners[s.third]
                             arr.append(i[3]*third[0,2,1])
                             arr.append(i[3]*third[0,2,2])
                             arr.append(i[4]*third[1,2,1])
@@ -414,29 +418,18 @@ class PolicySolver:
                 ret.append(arr)
             return np.array(ret)
             
-
-                    
+       
         #transitions: for each state, stores the number (corresponding to which state) and amount of runs for all possible future states
         transitions = np.asarray([fill_transitions(state) for state in self.game_states], dtype=np.int32)
         
         #stores probabilities of each occurrence
         probabilities = np.zeros((len(self.game_states), len(self.pitcher_actions), len(self.batter_actions), self.max_transitions), dtype=np.float32)
         
-        
-        
-        
-        
-        
         # for each state, for each result from swinging, map true to the matching state in transitions
         swing_to_transition_matrix = np.asarray([
             np.asarray(pad_list([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_swing_transitions(self.total_states[state_i])])).transpose()
             for state_i in range(len(self.game_states))
         ])
-        
-        
-        
-        
-        
         
         borderline_mask = np.asarray([zone.is_borderline for zone in default.COMBINED_ZONES])
         strike_mask = np.asarray([zone.is_strike for zone in default.COMBINED_ZONES])
@@ -446,7 +439,6 @@ class PolicySolver:
         called_strike_i = 1
         assert PitchResult.CALLED_BALL == called_ball_i
         assert PitchResult.CALLED_STRIKE == called_strike_i
-        
         
         # Iterate over each state
         # At the cost of readability, we use numpy operations to speed up the calculations (if necessary, even the remaining for loops can be removed)
@@ -470,10 +462,6 @@ class PolicySolver:
                     take_probs = 1 - swing_probs
                 
 
-                
-                
-                
-                
                     # Handle swing outcomes (stochastic)
                     result_probs = adjust_probs(swing_outcomes[(self.pitcher_id, self.batter_lineup[state.batter])][self.playerless_states_dict[playerless_state], pitch_type], state)
 
@@ -485,10 +473,6 @@ class PolicySolver:
                     probabilities[state_i, action_i, batter_swung, called_strike_i] += np.dot(take_probs, outcome_zone_probs * strike_mask)
                     probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)
         
-        
-        
-        
-
 
         return transitions, probabilities
 
