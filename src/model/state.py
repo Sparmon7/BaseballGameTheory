@@ -42,24 +42,7 @@ class Rules:
     num_outs = 3
     num_batters = 9
     max_runs = 9
-
     fouls_end_at_bats = False
-    two_base_game = False
-    runner_stochastic = True
-
-
-class DebugRules(Rules):
-    """Here's a set of rules with much less game states"""
-
-    num_innings = 3
-    num_balls = 3
-    num_strikes = 2
-    num_outs = 2
-    num_batters = 9
-
-    fouls_end_at_bats = True  # This speeds up convergence significantly
-    two_base_game = True  # This is a game with only two bases
-    runner_stochastic=False #This assumes all runners are identical and speeds up calculation
 
 
 class GameState:
@@ -79,13 +62,6 @@ class GameState:
         self.third = third     
         self.batter = batter
 
-    def checkValidity(self, rules=Rules):
-        
-        if (self.first!=self.second or self.first==-1) and (self.first!=self.third or self.first==-1) and (self.second!=self.third or self.second==-1) and \
-        ((self.batter-self.first +8) % rules.num_batters < (self.num_outs + 1) or self.first==-1) and ((self.batter-self.second +8) % rules.num_batters < (self.num_outs + 1 + int(self.first!=-1)) or self.second==-1) and ( (self.batter - self.third  +8) % rules.num_batters < (self.num_outs + 1 + int(self.second!=-1) + int(self.first!=-1)) or self.third==-1):
-            return True
-        else:
-            return False
     
     def checkTransValidity(self, result: PitchResult, firstBase, secondBase, thirdBase):
         #checking that inputted transition bases are valid, going case by case with all 8 combos of runners on base
@@ -163,9 +139,8 @@ class GameState:
         elif result == PitchResult.CALLED_BALL:
             next_state.balls += 1
         elif result == PitchResult.HIT_SINGLE:
-            if rules.runner_stochastic:
-                if not self.checkTransValidity(result,firstBase,secondBase,thirdBase):
-                    return None, 0
+            if not self.checkTransValidity(result,firstBase,secondBase,thirdBase):
+                return None, 0
             next_state.move_batter(1, rules, firstBase, secondBase, thirdBase)
         elif result == PitchResult.HIT_DOUBLE:
             if not self.checkTransValidity(result,firstBase,secondBase,thirdBase):
@@ -215,34 +190,29 @@ class GameState:
             self.first = self.second = -1
             self.third = self.batter
         elif num_bases == 2:
-            if rules.runner_stochastic:
-                if self.third!=-1:
-                    if thirdBase ==2:
-                        self.num_runs += 1
-                        self.third = -1
-                if self.second!=-1:
-                    if secondBase == 2:
-                        self.num_runs += 1
-                        self.second = -1
-                    elif secondBase == 1:
-                        self.third = self.second
-                        self.second=-1
-                if self.first!=-1:
-                    if firstBase == 2:
-                        self.num_runs += 1
-                        self.first = -1
-                    elif firstBase == 1:
-                        self.third = self.first
-                        self.first=-1
-                self.second = self.batter
+            if self.third!=-1:
+                if thirdBase ==2:
+                    self.num_runs += 1
+                    self.third = -1
+            if self.second!=-1:
+                if secondBase == 2:
+                    self.num_runs += 1
+                    self.second = -1
+                elif secondBase == 1:
+                    self.third = self.second
+                    self.second=-1
+            if self.first!=-1:
+                if firstBase == 2:
+                    self.num_runs += 1
+                    self.first = -1
+                elif firstBase == 1:
+                    self.third = self.first
+                    self.first=-1
+            self.second = self.batter
                         
-            else:
-                self.num_runs += int(self.second!=-1) + int(self.third!=-1)
-                self.third = self.first
-                self.first = -1
-                self.second = self.batter
+           
         elif num_bases == 1:
-            if rules.runner_stochastic or (firstBase!=-1 or secondBase!=-1 or thirdBase!=-1):
+            if firstBase!=-1 or secondBase!=-1 or thirdBase!=-1:
                 if self.third!=-1:
                     if thirdBase ==2:
                         self.num_runs += 1
@@ -272,9 +242,6 @@ class GameState:
                 self.second = self.first
                 self.first = self.batter
 
-        if rules.two_base_game:
-            self.num_runs += int(self.third!=-1)
-            self.third = -1
 
         self.balls = self.strikes = 0
         self.batter = (self.batter + 1) % rules.num_batters

@@ -86,17 +86,13 @@ class PolicySolver:
         self.pitcher_actions: list[A] = [(pitch_type, zone_i) for zone_i in range(len(default.ZONES)) for pitch_type in PitchType]
         self.batter_actions: list[O] = [False, True]  # Order is important!
 
-        third_options = [False, True] if not rules.two_base_game else [False]
-        base_options = range(-1, rules.num_batters) if rules.runner_stochastic else [False, True]
-        if not rules.two_base_game and rules.runner_stochastic:
-            third_options = base_options
+        base_options = range(-1, rules.num_batters)
 
-        game: list[S] = [
+        self.game_states: list[S] = [
             GameState(inning=inning, balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third, batter=batter)
             for inning in range(rules.num_innings) for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)
-            for first in base_options for second in base_options for third in third_options for batter in range(rules.num_batters)
+            for first in base_options for second in base_options for third in base_options for batter in range(rules.num_batters)
         ]
-        self.game_states = [i for i in game if i.checkValidity(self.rules)]
         
         self.playerless_states: list[S] = [
             GameState(inning=inning, balls=balls, strikes=strikes, outs=outs)
@@ -104,12 +100,11 @@ class PolicySolver:
         self.playerless_states_dict = {state: i for i, state in enumerate(self.playerless_states)}
 
         # Terminal states are stored separately for easier indexing
-        final: list[S] = [
+        self.final_states: list[S] = [
             GameState(inning=rules.num_innings, balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third, batter=batter)
             for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)
-            for first in base_options for second in base_options for third in third_options for batter in range(rules.num_batters)
+            for first in base_options for second in base_options for third in base_options for batter in range(rules.num_batters)
         ]
-        self.final_states = [i for i in final if i.checkValidity(self.rules)]
         
 
         self.total_states = self.game_states + self.final_states

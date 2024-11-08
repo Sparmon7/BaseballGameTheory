@@ -18,4 +18,11 @@
   - `src/model/` contains the object classes for the game model, like players, zones, pitches, etc.
   - `src/policy/` contains the zero-sum stochastic game model and work on batting lineup optimization
 
+
+  ### Future Ideas
+  - Trade deadline targets
+  - Pinch hitting strategy
+  - Stolen bases strategy on a runner/catcher basis
+  - Incorporate on-field events like sacrifices, double plays, stretching, etc.
+
 Old repository: https://github.com/BOBONA/ZeroSumBaseball
