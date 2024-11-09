@@ -88,29 +88,27 @@ class PolicySolver:
 
         base_options = range(-1, rules.num_batters)
 
-        self.game_states: list[S] = [
-            GameState(inning=inning, balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third, batter=batter)
-            for inning in range(rules.num_innings) for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)
+        game: list[S] = [
+            GameState(inning=0, balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third, batter=batter)
+             for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)
             for first in base_options for second in base_options for third in base_options for batter in range(rules.num_batters)
         ]
+        self.game_states = [i for i in game if i.checkValidity(self.rules)]
+
         
         self.playerless_states: list[S] = [
-            GameState(inning=inning, balls=balls, strikes=strikes, outs=outs)
-            for inning in range(rules.num_innings) for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)]
+            GameState(inning=0, balls=balls, strikes=strikes, outs=outs)
+            for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)]
         self.playerless_states_dict = {state: i for i, state in enumerate(self.playerless_states)}
 
         # Terminal states are stored separately for easier indexing
-        self.final_states: list[S] = [
-            GameState(inning=rules.num_innings, balls=balls, strikes=strikes, outs=outs, first=first, second=second, third=third, batter=batter)
-            for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)
-            for first in base_options for second in base_options for third in base_options for batter in range(rules.num_batters)
-        ]
+        self.final_states: list[S] = [GameState(inning=1, batter=batter) for batter in range(rules.num_batters)]
         
 
         self.total_states = self.game_states + self.final_states
         self.total_states_dict = {state: i for i, state in enumerate(self.total_states)}
         
-        
+
 
         self.transitions = None
         self.transition_distribution = None
@@ -424,7 +422,7 @@ class PolicySolver:
         swing_to_transition_matrix = np.asarray([
             np.asarray(pad_list([transitions[state_i, :, 0] == self.total_states_dict[j] for j in list_swing_transitions(self.total_states[state_i])])).transpose()
             for state_i in range(len(self.game_states))
-        ])
+        ])        
         
         borderline_mask = np.asarray([zone.is_borderline for zone in default.COMBINED_ZONES])
         strike_mask = np.asarray([zone.is_strike for zone in default.COMBINED_ZONES])
@@ -466,8 +464,7 @@ class PolicySolver:
 
                     # Handle take outcome (deterministic)
                     probabilities[state_i, action_i, batter_swung, called_strike_i] += np.dot(take_probs, outcome_zone_probs * strike_mask)
-                    probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)
-        
+                    probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)          
 
         return transitions, probabilities
 
@@ -662,7 +659,7 @@ class PolicySolver:
         # Stores the "value" of each state, indexed according to total_states
         value = self.raw_values if self.raw_values is not None and use_last_values else (
             np.concatenate((np.random.rand(len(self.game_states)), np.zeros(len(self.final_states)))))
-
+        
         # Stores the policy for each state, indexed according to game_states
         policy: PolicySolver.Policy = np.ones((len(self.game_states), len(self.pitcher_actions))) / len(self.pitcher_actions)
 
@@ -672,7 +669,7 @@ class PolicySolver:
         # Instead of optimizing all states at once, we can do one out at a time
         # This is because the values of a later out are completely independent of the values of an earlier out
         # You can view this as mixing backward induction with value iteration
-        num_inning_outs = self.rules.num_innings * self.rules.num_outs
+        num_inning_outs = self.rules.num_outs
         for inning_out in tqdm(reversed(range(num_inning_outs)), total=num_inning_outs, desc='Optimizing innings/outs', disable=not print_output):
             states = [state_i for state_i, state in enumerate(self.game_states)
                       if state.inning == inning_out // self.rules.num_outs and state.num_outs == inning_out % self.rules.num_outs]
@@ -719,7 +716,7 @@ class PolicySolver:
 
         return policy, value
 
-    def initialize_policy_problem(self, max_pitch_percentage: float = 0.7):
+    def initialize_policy_problem(self, max_pitch_percentage: float = 0.8):
         """We only need to initialize the policy problem once, as the constraints always the same"""
 
         if len(self.pitcher_actions) == 1:
@@ -772,6 +769,39 @@ class PolicySolver:
                 if prob > 0.001:
                     optimal_policy[state].append((self.pitcher_actions[j], prob))
         return optimal_policy
+    
+    def calculate_innings(self):
+            #facilitating dynamic calculation of end of innings
+        def dynamically_get_ending(state_i):
+            """Calculates the value of a state that is not in the value array"""
+            transitions, rewards = self.transitions[state_i].transpose()
+            print(transitions)
+            print(rewards)
+            print()
+            action_quality = np.dot(self.transition_distribution[0], rewards)
+            print()
+            print(action_quality)
+            
+        
+        dynamically_get_ending(0)
+        print()
+        
+        # print(self.transition_distribution[0].shape)
+        # print(self.get_policy()[GameState(batter=0)])
+        
+        
+        
+        # #probability of each batter starting the next inning for each state
+        # end_state_probs = np.zeros((len(self.game_states), len(self.batter_lineup)), dtype=np.float32)
+        # for state_i, state in tqdm(enumerate(self.game_states), desc='Calculating endings', total=len(self.game_states)):
+            # dynamically_get_ending(state)   
+            
+        
+
+        
+        
+            
+    
 
 
 def seed(i: int = 0):
@@ -793,7 +823,7 @@ def test_era(bd: BaseballData, pitcher_id: int, batter_lineup: list[int], load=F
     solver.initialize_distributions(save_distributions=True, load_distributions=load, load_transition=True)
     solver.calculate_optimal_policy(print_output=True, beta=2e-4)
 
-    first_batter = 0 if batter_permutation is None else batter_permutation[0]
+    first_batter = 0 if batter_permutation is None else batter_permutation[0]    
     print(f'ERA {solver.get_value(GameState(batter=first_batter))}\n')
     print(f'Solved in {solver.num_programs} programs')
 
@@ -816,11 +846,11 @@ def main(debug: bool = False, load=False):
         distributions = load_blosc2('distributions.blosc2')
         transition_distribution = load_blosc2('transition_distribution.blosc2')
         solver = PolicySolver.from_saved('solved_policy.blosc2')
-        print(f'ERA {solver.get_value()}')
+        solver.calculate_innings()
+        #print(f'ERA {solver.get_value()}')
         pass  # Do something with the data or just examine it
 
 
 if __name__ == '__main__':
     seed()
-    BaseballData()
-    main(debug=False, load=False)
+    main(debug=True, load=True)

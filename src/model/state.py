@@ -37,11 +37,11 @@ class Rules:
     """
 
     num_innings = 9
-    num_balls = 4
-    num_strikes = 3
-    num_outs = 3
+    num_balls = 2
+    num_strikes = 1
+    num_outs = 1
     num_batters = 9
-    max_runs = 9
+    max_runs = 5
     fouls_end_at_bats = False
 
 
@@ -62,6 +62,12 @@ class GameState:
         self.third = third     
         self.batter = batter
 
+    def checkValidity(self, rules=Rules):
+        if (self.first!=self.second or self.first==-1) and (self.first!=self.third or self.first==-1) and (self.second!=self.third or self.second==-1) and \
+        ((self.batter-self.first +8) % rules.num_batters < (self.num_outs + 1) or self.first==-1) and ((self.batter-self.second +8) % rules.num_batters < (self.num_outs + 1 + int(self.first!=-1)) or self.second==-1) and ( (self.batter - self.third  +8) % rules.num_batters < (self.num_outs + 1 + int(self.second!=-1) + int(self.first!=-1)) or self.third==-1):
+            return True
+        else:
+            return False
     
     def checkTransValidity(self, result: PitchResult, firstBase, secondBase, thirdBase):
         #checking that inputted transition bases are valid, going case by case with all 8 combos of runners on base
