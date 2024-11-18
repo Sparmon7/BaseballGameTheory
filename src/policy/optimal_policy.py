@@ -335,7 +335,7 @@ class PolicySolver:
         def adjust_probs(probs, s):
             ret =[]
             for i in probs:
-                arr = [0,0]
+                arr = []
                 for j in [2,3,6,7,8]:
                     arr.append(i[SwingResult.from_pitch_result(PitchResult(j))])
                 if s.first !=-1:
@@ -893,4 +893,4 @@ def main(debug: bool = False, load=False):
 
 if __name__ == '__main__':
     seed()
-    main(debug=True, load=True)
+    main(debug=False, load=False)
