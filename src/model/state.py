@@ -37,12 +37,12 @@ class Rules:
     """
 
     num_innings = 9
-    num_balls = 2
-    num_strikes = 1
-    num_outs = 1
+    num_balls = 4
+    num_strikes = 3
+    num_outs = 3
     num_batters = 9
     max_runs = 5
-    fouls_end_at_bats = False
+    fouls_end_at_bats = True
 
 
 class GameState:
