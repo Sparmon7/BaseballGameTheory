@@ -446,13 +446,13 @@ class PolicySolver:
                     # On obvious balls, the batter will not swing
                     swing_probs[~strike_mask] = 0
                     
-                    playerless_state = GameState(inning=state.inning, balls=state.balls, strikes=state.strikes, outs=state.num_outs)
 
                     # On borderline balls, if the batter has chosen to swing, we override the decision with the batter's patience
                     if batter_swung:
                         swing_probs[borderline_mask] = batter_patiences[self.batter_lineup[state.batter]][self.playerless_states_dict[playerless_state], pitch_type]
                     take_probs = 1 - swing_probs
                 
+                    playerless_state = GameState(inning=state.inning, balls=state.balls, strikes=state.strikes, outs=state.num_outs)
 
                     # Handle swing outcomes (stochastic)
                     result_probs = adjust_probs(swing_outcomes[(self.pitcher_id, self.batter_lineup[state.batter])][self.playerless_states_dict[playerless_state], pitch_type], state)
@@ -464,7 +464,11 @@ class PolicySolver:
                     # Handle take outcome (deterministic)
                     probabilities[state_i, action_i, batter_swung, called_strike_i] += np.dot(take_probs, outcome_zone_probs * strike_mask)
                     probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)          
-
+                    if batter_swung == 1:
+                        print(self.total_states[state_i])
+                        print([self.total_states[i[0]] for i in transitions[state_i]])
+                        print(probabilities[state_i, action_i, batter_swung])
+                        print()
         return transitions, probabilities
 
     def calculate_swing_outcome_distribution(self, matchups: list[tuple[int, int]], batch_size=default_batch) -> dict[tuple[int, int], SwingOutcomeDistribution]:
