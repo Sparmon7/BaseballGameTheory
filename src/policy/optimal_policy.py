@@ -464,11 +464,6 @@ class PolicySolver:
                     # Handle take outcome (deterministic)
                     probabilities[state_i, action_i, batter_swung, called_strike_i] += np.dot(take_probs, outcome_zone_probs * strike_mask)
                     probabilities[state_i, action_i, batter_swung, called_ball_i] += np.dot(take_probs, outcome_zone_probs * ~strike_mask)          
-                    if batter_swung == 1:
-                        print(self.total_states[state_i])
-                        print([self.total_states[i[0]] for i in transitions[state_i]])
-                        print(probabilities[state_i, action_i, batter_swung])
-                        print()
         return transitions, probabilities
 
     def calculate_swing_outcome_distribution(self, matchups: list[tuple[int, int]], batch_size=default_batch) -> dict[tuple[int, int], SwingOutcomeDistribution]:
