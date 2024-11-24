@@ -116,6 +116,7 @@ class BaseballData:
         batter_total_encountered = defaultdict(lambda: torch.zeros(pitch_statistics_shape))
         batter_total_swung = defaultdict(lambda: torch.zeros(pitch_statistics_shape))
         batter_total_hits = defaultdict(lambda: torch.zeros(pitch_statistics_shape))
+        batter_total_slugging = defaultdict(lambda: torch.zeros(pitch_statistics_shape))
         
         runner_shape = (2,3,3) #2 bases, 3 possible starting bases, 3 ending bases
         runner_results = defaultdict(lambda: torch.zeros(runner_shape))
@@ -218,6 +219,7 @@ class BaseballData:
                     batter_total_encountered[pitch.batter_id][*loc] += 1
                     batter_total_swung[pitch.batter_id][*loc] += int(pitch.result.batter_swung())
                     batter_total_hits[pitch.batter_id][*loc] += int(pitch.result.batter_hit())
+                    batter_total_slugging[pitch.batter_id][*loc] += int(pitch_outcome == PitchResult.HIT_SINGLE) + 2*int(pitch_outcome == PitchResult.HIT_DOUBLE) + 3*int(pitch_outcome == PitchResult.HIT_TRIPLE) + 4*int(pitch_outcome == PitchResult.HIT_HOME_RUN)                    
 
             save_blosc2(pitches, processed_data_dir + f'{year}.blosc2')
 
@@ -258,6 +260,7 @@ class BaseballData:
             batter.obp = batter_hits[batter_id] / batter.num_at_bats
             batter.set_swinging_frequency_data(nan_to_num(fill_partial_stat(batter_total_swung[batter_id])))
             batter.set_batting_average_data(nan_to_num(fill_partial_stat(batter_total_hits[batter_id] / batter_total_encountered[batter_id])))
+            batter.set_slugging_data(nan_to_num(fill_partial_stat(batter_total_slugging[batter_id] / batter_total_encountered[batter_id])))
 
         # Add the OBP statistics to the players
         batter_by_obp = sorted(filter(lambda b: b.num_at_bats > min_obp_cutoff, batters.values()), key=lambda b: b.obp)

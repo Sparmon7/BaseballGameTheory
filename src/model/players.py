@@ -35,7 +35,7 @@ class Batter:
     Each pitch type/location combination has a corresponding relative swinging frequency and batting average.
 
     Attributes:
-        data (torch.Tensor): The tensor representing the batter's relative swinging frequency and batting average.
+        data (torch.Tensor): The tensor representing the batter's relative swinging frequency, batting average, and slugging percentage
         obp (float): The batter's on-base percentage.
         obp_percentile (float): The batter's percentile in on-base percentage.
         num_at_bats (int): The number of at-bats the batter has had.
@@ -47,7 +47,7 @@ class Batter:
     __slots__ = ['data', 'obp', 'obp_percentile', 'num_at_bats']
 
     def __init__(self, obp: float | None = None, obp_percentile: float | None = None,
-                 data: torch.Tensor = None):
+                 data: torch.Tensor = None, slugging: float | None = None):
         if data:
             assert (data.size(0) == 2 * len(PitchType) and
                     data.size(1) == Zones.DIMENSION and
@@ -72,12 +72,17 @@ class Batter:
 
         # Normalize the swinging frequencies
         if data.sum() > 0:
-            self.data[len(PitchType):, :, :] = data / data.sum()
+            self.data[len(PitchType):2*len(PitchType), :, :] = data / data.sum()
 
     def set_batting_average_data(self, data: torch.Tensor):
         """Sets the batting average data for the batter."""
 
         self.data[:len(PitchType), :, :] = data
+    
+    def set_slugging_data(self, data: torch.Tensor):
+        """Sets the slugging data for the batter."""
+        
+        self.data[2*len(PitchType):, :, :] = data
 
 
 class Pitcher:

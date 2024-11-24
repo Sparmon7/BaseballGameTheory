@@ -884,12 +884,9 @@ def main(debug: bool = False, load=False):
         distributions = load_blosc2('distributions.blosc2')
         transition_distribution = load_blosc2('transition_distribution.blosc2')
         solver = PolicySolver.from_saved('solved_policy.blosc2')
-        print(solver.calculate_runs())
-        solver.calculate_state_transitions(0)
-        solver.save('solved_policy.blosc2')  
         
-
+        
 
 if __name__ == '__main__':
     seed()
-    main(debug=False, load=False)
+    main(debug=True, load=True)

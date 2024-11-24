@@ -30,7 +30,7 @@ class BatterSwings(nn.Module):
         assert len(PitchType) == 6  # Edit this line if you add more pitch types and verify the architecture
 
         self.b_dropout_1 = nn.Dropout(0.2)
-        self.b_conv_1 = nn.Conv2d(2 * len(PitchType), 64, 3)
+        self.b_conv_1 = nn.Conv2d(3 * len(PitchType), 64, 3)
         self.b_conv_2 = nn.Conv2d(64, 128, 3)
         self.b_linear = nn.Linear(128, 128)
         self.b_dropout_2 = nn.Dropout(0.25)
