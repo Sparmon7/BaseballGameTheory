@@ -24,5 +24,6 @@
   - Pinch hitting strategy
   - Stolen bases strategy on a runner/catcher basis
   - Incorporate on-field events like sacrifices, double plays, stretching, etc.
+  - Bullpen strategy
 
 Old repository: https://github.com/BOBONA/ZeroSumBaseball
