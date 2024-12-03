@@ -28,6 +28,28 @@ class PitchResult(IntEnum):
 
         return (self == PitchResult.HIT_SINGLE or self == PitchResult.HIT_DOUBLE or self == PitchResult.HIT_TRIPLE or
                 self == PitchResult.HIT_HOME_RUN)
+        
+    def hit_or_out(self, strikes):
+        """Returns whether the batter was out on the pitch."""
+        if self.batter_hit() or self == PitchResult.HIT_OUT:
+            return 1
+        if Rules.num_strikes ==strikes+1:
+            if self == PitchResult.SWINGING_STRIKE or self == PitchResult.CALLED_STRIKE:
+                return 1
+            if self == PitchResult.SWINGING_FOUL and Rules.fouls_end_at_bats:
+                return 1
+        return 0
+    
+    def calculate_slugging(self):
+        if self == PitchResult.HIT_SINGLE:
+            return 1
+        if self == PitchResult.HIT_DOUBLE:
+            return 2
+        if self == PitchResult.HIT_TRIPLE:
+            return 3
+        if self == PitchResult.HIT_HOME_RUN:
+            return 4
+        return 0
 
 
 class Rules:

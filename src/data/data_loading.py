@@ -216,10 +216,10 @@ class BaseballData:
                     batter_all_at_bats[pitch.batter_id].add((pitch.game_id, pitch.at_bat_num))
                     batter_hits[pitch.batter_id] += int(pitch.result.batter_hit())
 
-                    batter_total_encountered[pitch.batter_id][*loc] += 1
+                    batter_total_encountered[pitch.batter_id][*loc] += pitch.result.hit_or_out(row.strikes)
                     batter_total_swung[pitch.batter_id][*loc] += int(pitch.result.batter_swung())
                     batter_total_hits[pitch.batter_id][*loc] += int(pitch.result.batter_hit())
-                    batter_total_slugging[pitch.batter_id][*loc] += int(pitch_outcome == PitchResult.HIT_SINGLE) + 2*int(pitch_outcome == PitchResult.HIT_DOUBLE) + 3*int(pitch_outcome == PitchResult.HIT_TRIPLE) + 4*int(pitch_outcome == PitchResult.HIT_HOME_RUN)                    
+                    batter_total_slugging[pitch.batter_id][*loc] += pitch.result.calculate_slugging()     
 
             save_blosc2(pitches, processed_data_dir + f'{year}.blosc2')
 

@@ -18,12 +18,22 @@
   - `src/model/` contains the object classes for the game model, like players, zones, pitches, etc.
   - `src/policy/` contains the zero-sum stochastic game model and work on batting lineup optimization
 
+### My Contributions
+- Implented stochastic runners to accurately model speed
+- Sped up ERA computation by dynamically storing inning results
+- Modified batter representation to enhance swing outcome calculation
+- Reduced neural network complexity by removing runners
+- Enhanced model accuracy by limiting pitchers' arsenals
 
-  ### Future Ideas
-  - Trade deadline targets
-  - Pinch hitting strategy
-  - Stolen bases strategy on a runner/catcher basis
-  - Incorporate on-field events like sacrifices, double plays, stretching, etc.
-  - Bullpen strategy
+### Future Ideas
+- Batter/pitcher handedness
+- Trade deadline targets
+- Pinch hitting strategy
+- Stolen bases strategy on a runner/catcher basis
+- Incorporate on-field events like sacrifices, double plays, stretching, etc.
+- Bullpen strategy
+
+
+
 
 Old repository: https://github.com/BOBONA/ZeroSumBaseball
