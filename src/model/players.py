@@ -49,13 +49,13 @@ class Batter:
     def __init__(self, obp: float | None = None, obp_percentile: float | None = None,
                  data: torch.Tensor = None, slugging: float | None = None):
         if data:
-            assert (data.size(0) == 2 * len(PitchType) and
+            assert (data.size(0) == 3 * len(PitchType) and
                     data.size(1) == Zones.DIMENSION and
                     data.size(2) == Zones.DIMENSION)
 
             self.data = data
         else:
-            self.data = torch.zeros(2 * len(PitchType), Zones.DIMENSION, Zones.DIMENSION)
+            self.data = torch.zeros(3 * len(PitchType), Zones.DIMENSION, Zones.DIMENSION)
             # self.data[:len(PitchType), :, :] = 1 / len(PitchType)
 
         self.obp = obp

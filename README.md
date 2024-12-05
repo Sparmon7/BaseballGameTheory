@@ -1,3 +1,7 @@
+## Improving the Scalability and Realism of Game-Theoretic Approaches for Baseball
+This project models baseball through a game-theoretic lens using MLB data
+
+
 ### Getting Started
 1. Create a virtual environment (myenv will be ignored by git).
 2. Install requirements using `pip install -r requirements.txt`
@@ -21,8 +25,7 @@
 ### My Contributions
 - Implented stochastic runners to accurately model speed
 - Sped up ERA computation by dynamically storing inning results
-- Modified batter representation to enhance swing outcome calculation
-- Reduced neural network complexity by removing runners
+- Modified batter representation to enhance swing outcome neural network calculation
 - Enhanced model accuracy by limiting pitchers' arsenals
 
 ### Future Ideas
