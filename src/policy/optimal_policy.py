@@ -865,9 +865,8 @@ def test_era(bd: BaseballData, pitcher_id: int, batter_lineup: list[int], load=F
     solver.set_batter_permutation(batter_permutation)
     solver.initialize_distributions(save_distributions=True, load_distributions=load, load_transition=True)
     solver.calculate_optimal_policy(print_output=True, beta=2e-4)
-    if not load:
-        solver.calculate_endings()
-    print(f"Runs: {solver.calculate_runs()}")
+    solver.calculate_endings()
+    print(f"ERA: {solver.calculate_runs()}")
 
     solver.save('solved_policy.blosc2')
 
@@ -884,9 +883,10 @@ def main(debug: bool = False, load=False):
         distributions = load_blosc2('distributions.blosc2')
         transition_distribution = load_blosc2('transition_distribution.blosc2')
         solver = PolicySolver.from_saved('solved_policy.blosc2')
+        bd= BaseballData(load_pitches=False)
         
 
 
 if __name__ == '__main__':
     seed()
-    main(debug=True, load=True)
+    main(debug=True, load=False)

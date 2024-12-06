@@ -26,16 +26,15 @@ This project models baseball through a game-theoretic lens using MLB data
 - Implented stochastic runners to accurately model speed
 - Sped up ERA computation by dynamically storing inning results
 - Modified batter representation to enhance swing outcome neural network calculation
-- Enhanced model accuracy by limiting pitchers' arsenals
 
 ### Future Ideas
 - Batter/pitcher handedness
+- Limit pitcher arsenals
 - Trade deadline targets
 - Pinch hitting strategy
 - Stolen bases strategy on a runner/catcher basis
 - Incorporate on-field events like sacrifices, double plays, stretching, etc.
 - Bullpen strategy
-
 
 
 
