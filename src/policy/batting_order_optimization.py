@@ -1,3 +1,5 @@
+#TODO: THIS DOESN'T QUITE WORK WITH REGULAR RULES, IT WAS IMPLEMENTED BEFORE WITH DEBUG RULES MAKING IT INACCURATE
+
 from dotenv import load_dotenv
 load_dotenv()
 import sys
@@ -18,14 +20,13 @@ from tqdm import tqdm
 from src.data.data_loading import BaseballData, save_blosc2, load_blosc2
 from src.model.pitch_type import PitchType
 from src.model.players import Pitcher, Batter
-from src.model.state import DebugRules, GameState, Rules
+from src.model.state import GameState, Rules
 from src.policy.optimal_policy import PolicySolver, seed
 from src.policy.rosters import rosters
 
 type Permutation = tuple[int, ...]
 
-# This can be swapped out for the regular rules, but will require way more computation (like 20x more)
-rules = DebugRules
+rules = Rules
 
 
 def swap(perm: Permutation, i: int, j: int) -> Permutation:
@@ -82,10 +83,11 @@ class BattingOrderStrategy(ABC):
         if not self.is_finished():
             policy_solver.set_batter_permutation(perm)
             policy_solver.calculate_optimal_policy(beta=2e-4, use_last_values=True)
+            policy_solver.calculate_endings()
 
             # We can extract all permutations with the same cycle because of the symmetry of the problem
             for i in range(rules.num_batters):
-                value = policy_solver.get_value(GameState(batter=i))
+                value = policy_solver.calculate_runs(batter=i)
                 idx = perm.index(i)
                 cycle_perm = tuple(perm[idx:] + perm[:idx])
                 self.record_try(cycle_perm, value)
@@ -370,7 +372,7 @@ class GeneticAlgorithm(BattingOrderStrategy):
 def test_strategy(strategy: BattingOrderStrategy, match: tuple, k: int, label='strat', print_output=False):
     """Run a strategy for k steps and then save it"""
 
-    policy_solver = PolicySolver(None, *match, rules=Rules)
+    policy_solver = PolicySolver(None, *match, rules=Rules, lineup_purposes=True)
     policy_solver.initialize_distributions(save_distributions=True, load_distributions=True, load_transition=True, path=f'distributions/{label}/')
 
     for step in range(k):
@@ -399,7 +401,7 @@ def test_strategies():
     bd = BaseballData(load_pitches=False)
     for i in tqdm(range(start, start + num_matches)):
         match = matches[i]
-        PolicySolver(bd, *match, rules=rules).initialize_distributions(save_distributions=True)
+        PolicySolver(bd, *match, rules=rules, lineup_purposes=True).initialize_distributions(save_distributions=True)
 
         threads = []
         for strategy in strategies:
@@ -432,7 +434,7 @@ def test_against_rosters():
     for i in indexes:
         game_id, lineup = lineups[i]
         match = ('average_pitcher', lineup)
-        policy_solver = PolicySolver(bd, *match, rules=Rules)
+        policy_solver = PolicySolver(bd, *match, rules=Rules, lineup_purposes=True)
         policy_solver.initialize_distributions(save_distributions=True, path=f'distributions/lineups/{game_id}/')
 
         k = 60
@@ -476,7 +478,7 @@ def test_batting_average():
         bd.batters[f'average_batter_{i}'] = batter
 
     match = ('average_pitcher', [f'average_batter_{i}' for i in reversed(range(rules.num_batters))])
-    policy_solver = PolicySolver(bd, *match, rules=Rules)
+    policy_solver = PolicySolver(bd, *match, rules=Rules, lineup_purposes=True)
     policy_solver.initialize_distributions()
 
     strategy = OneByOne()
@@ -495,11 +497,10 @@ def test_cardinals():
     bd.pitchers['average_pitcher'] = average_pitcher
     cardinals = rosters['cardinals']
     match = ('average_pitcher', cardinals)
-    policy_solver = PolicySolver(bd, *match, rules=Rules)
+    policy_solver = PolicySolver(bd, *match, rules=Rules, lineup_purposes=True)
     policy_solver.initialize_distributions()
-
     strategy = OneByOne()
-    k = 120
+    k = 10
     for _ in tqdm(range(k)):
         strategy.step(policy_solver)
         save_blosc2(strategy, f'{strategy.__class__.__name__.lower()}/cardinals_OPTIMAL_proper.blosc2')
@@ -517,5 +518,4 @@ def generate_lineups():
 
 if __name__ == '__main__':
     seed()
-    generate_lineups()
-    test_against_rosters()
+    test_cardinals()

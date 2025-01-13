@@ -70,7 +70,7 @@ class PolicySolver:
 
     default_batch: int = 512
 
-    def __init__(self, bd: BaseballData, pitcher_id: int, batter_lineup: list[int], rules: type[Rules] = Rules):
+    def __init__(self, bd: BaseballData, pitcher_id: int, batter_lineup: list[int], rules: type[Rules] = Rules,  lineup_purposes: bool=False):
         """
         Initializes the policy solver with the given pitcher and batter, and some optional parameters.
         This does not do any actual calculations, but sets up the necessary data structures and config.
@@ -91,8 +91,9 @@ class PolicySolver:
              for balls in range(rules.num_balls) for strikes in range(rules.num_strikes) for outs in range(rules.num_outs)
             for first in range(-1, rules.num_batters) for second in range(-1, rules.num_batters) for third in range(-1, rules.num_batters) for batter in range(rules.num_batters)
         ]
-        self.game_states = [i for i in game if i.checkValidity(self.rules)]
-
+        self.game_states = [i for i in game]
+        if not lineup_purposes:
+            self.game_states = [i for i in game if i.checkValidity(self.rules)]
         
         self.playerless_states: list[S] = [
             GameState(inning=0, balls=balls, strikes=strikes, outs=outs)
@@ -781,6 +782,7 @@ class PolicySolver:
         return val
 
     def calculate_batter_policy(self, state: int):
+        #since initial policy only calculates pitcher policy
         policy = cp.Variable(1)
         policy_constraints = [policy >= 0, policy<=1]
         objective = cp.Maximize(cp.minimum(*[policy*self.q_value(state, p, 0) + (1-policy)*self.q_value(state, p, 1) for p in range(len(self.pitcher_actions))]))
@@ -837,13 +839,13 @@ class PolicySolver:
                 
         self.end_batter_probabilities = [dynamically_get_ending(self.total_states_dict[GameState(batter=i)],0) for i in range(self.rules.num_batters)]
 
-    #calculates ERA
-    def calculate_runs(self):
+    #calculates ERA for the lineup with a specific batter starting
+    def calculate_runs(self, batter: int = 0):
         batter_runs = np.zeros((len(self.batter_lineup), self.rules.num_innings))
         batter_runs[:,self.rules.num_innings-1] = [self.get_value(GameState(batter=j)) for j in range(self.rules.num_batters)]
         for i in reversed(range(self.rules.num_innings - 1)):
             batter_runs[:,i] = batter_runs[:,self.rules.num_innings-1] + [np.dot(batter_runs[:,i+1], self.end_batter_probabilities[j]) for j in range(self.rules.num_batters)]
-        return batter_runs[0,0]
+        return batter_runs[batter,0]
          
             
 
@@ -883,10 +885,11 @@ def main(debug: bool = False, load=False):
         distributions = load_blosc2('distributions.blosc2')
         transition_distribution = load_blosc2('transition_distribution.blosc2')
         solver = PolicySolver.from_saved('solved_policy.blosc2')
-        bd= BaseballData(load_pitches=False)
+        for i in range(9):
+            print(f"ERA with batter {i} leading off: {solver.calculate_runs(i)}")
         
 
 
 if __name__ == '__main__':
     seed()
-    main(debug=True, load=False)
+    main(debug=False, load=False)

@@ -85,6 +85,7 @@ class GameState:
         self.batter = batter
 
     def checkValidity(self, rules=Rules):
+        # checking that the current state makes sense for a lineup
         if (self.first!=self.second or self.first==-1) and (self.first!=self.third or self.first==-1) and (self.second!=self.third or self.second==-1) and \
         ((self.batter-self.first +8) % rules.num_batters < (self.num_outs + 1) or self.first==-1) and ((self.batter-self.second +8) % rules.num_batters < (self.num_outs + 1 + int(self.first!=-1)) or self.second==-1) and ( (self.batter - self.third  +8) % rules.num_batters < (self.num_outs + 1 + int(self.second!=-1) + int(self.first!=-1)) or self.third==-1):
             return True

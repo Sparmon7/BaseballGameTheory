@@ -10,8 +10,9 @@ This project models baseball through a game-theoretic lens using MLB data
 5. Fetch the raw data with `raw_data/fetch_raw_data.py`
 6. Process the data with `src/data/data_loading.py`
 7. Try out the zero-sum stochastic game model with `src/policy/optimal_policy.py` (run this from inside the policy folder)
-8. Try the batting lineup optimization scripts with `src/policy/batting_order_optimization.py` (run this from inside the policy folder)
+8. Try out batting order optimization scripts with `src/policy/batting_order_optimization.py`
 9. Feel free to load the data with `bd = BaseballData()` and experiment!
+
 
 ### Project Structure
 - `model_weights/` contains pre-trained models for the distributions
@@ -29,7 +30,7 @@ This project models baseball through a game-theoretic lens using MLB data
 
 ### Future Ideas
 - Batter/pitcher handedness
-- Limit pitcher arsenals
+- Limit pitcher arsenals to pitches they throw
 - Trade deadline targets
 - Pinch hitting strategy
 - Stolen bases strategy on a runner/catcher basis
